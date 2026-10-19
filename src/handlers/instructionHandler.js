@@ -1,12 +1,17 @@
+const path = require('path');
+const fs = require('fs');
 const {
   EmbedBuilder,
   ActionRowBuilder,
   ButtonBuilder,
-  ButtonStyle
+  ButtonStyle,
+  AttachmentBuilder
 } = require('discord.js');
 
-function createInstructionEmbed() {
-  return new EmbedBuilder()
+const BANNER_PATH = path.join(__dirname, '..', '..', 'assets', 'banner.png');
+
+function createInstructionEmbed(hasBannerAttachment = false) {
+  const embed = new EmbedBuilder()
     .setColor(0x00E5FF)
     .setTitle('Como iniciar um Mix de Valorant?')
     .setDescription(
@@ -20,6 +25,12 @@ function createInstructionEmbed() {
       `Você só precisa fazer isso uma vez — seu cadastro ficará salvo para as próximas partidas.`
     )
     .setFooter({ text: 'Mix VALORANT • discord.gg/xd' });
+
+  if (hasBannerAttachment) {
+    embed.setImage('attachment://banner.png');
+  }
+
+  return embed;
 }
 
 function createInstructionButtons() {
@@ -45,11 +56,20 @@ function createInstructionButtons() {
 }
 
 async function sendInstructionMessage(channel) {
-  const embed = createInstructionEmbed();
+  const files = [];
+  let hasBanner = false;
+
+  if (fs.existsSync(BANNER_PATH)) {
+    files.push(new AttachmentBuilder(BANNER_PATH, { name: 'banner.png' }));
+    hasBanner = true;
+  }
+
+  const embed = createInstructionEmbed(hasBanner);
   const components = createInstructionButtons();
 
   return await channel.send({
     embeds: [embed],
+    files,
     components
   });
 }
@@ -59,3 +79,4 @@ module.exports = {
   createInstructionButtons,
   sendInstructionMessage
 };
+

@@ -137,6 +137,66 @@ module.exports = {
   },
 
   /**
+   * Registra a participação de um jogador em uma partida imediatamente,
+   * sem depender da API do Valorant (kills=0, won=false por padrão).
+   * Deve ser chamado logo após o /finalizarmix para garantir que gamesPlayed
+   * suba mesmo quando a API falhar.
+   * @param {string} discordId
+   * @param {{ displayName, riotName, riotTag }} info
+   */
+  registerParticipation(discordId, { displayName, riotName, riotTag }) {
+    const data = load();
+    if (!data.playerStats) data.playerStats = {};
+
+    const current = data.playerStats[discordId] || {
+      wins: 0,
+      losses: 0,
+      kills: 0,
+      gamesPlayed: 0,
+      displayName: '',
+      riotName: '',
+      riotTag: ''
+    };
+
+    data.playerStats[discordId] = {
+      ...current,
+      gamesPlayed: current.gamesPlayed + 1,
+      displayName: displayName || current.displayName,
+      riotName:    riotName    || current.riotName,
+      riotTag:     riotTag     || current.riotTag,
+      updatedAt:   new Date().toISOString()
+    };
+
+    save();
+    return data.playerStats[discordId];
+  },
+
+  /**
+   * Enriquece os stats de um jogador com kills e vitória obtidos da API.
+   * Deve ser chamado após registerParticipation, quando a API responder.
+   * @param {string} discordId
+   * @param {{ kills, won }} update
+   */
+  enrichPlayerStats(discordId, { kills = 0, won = false }) {
+    const data = load();
+    if (!data.playerStats) data.playerStats = {};
+
+    const current = data.playerStats[discordId];
+    if (!current) return null; // segurança: só enriquece se já foi registrado
+
+    data.playerStats[discordId] = {
+      ...current,
+      kills:  current.kills  + kills,
+      wins:   current.wins   + (won ? 1 : 0),
+      losses: current.losses + (won ? 0 : 1),
+      updatedAt: new Date().toISOString()
+    };
+
+    save();
+    return data.playerStats[discordId];
+  },
+
+  /**
    * Retorna o top N jogadores ordenados por vitórias (depois kills como desempate)
    */
   getLeaderboard(limit = 10) {
@@ -147,7 +207,8 @@ module.exports = {
       .map(([discordId, stats]) => ({ discordId, ...stats }))
       .sort((a, b) => {
         if (b.wins !== a.wins) return b.wins - a.wins;
-        return b.kills - a.kills;
+        if (b.kills !== a.kills) return b.kills - a.kills;
+        return (b.gamesPlayed || 0) - (a.gamesPlayed || 0);
       })
       .slice(0, limit);
   }

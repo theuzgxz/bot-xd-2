@@ -251,38 +251,8 @@ async function handleButtonInteraction(interaction) {
 
   // Finalizar partida e puxar todos
   if (customId === 'btn_end_mix') {
-    if (!hasMixPermission(member)) {
-      return interaction.reply({
-        content: '❌ Apenas quem possui o cargo **mix** (ou Administrador) pode finalizar a partida!',
-        ephemeral: true
-      });
-    }
-
-    await interaction.deferReply();
-
-    const session = activeMixes.get(guildId);
-    const guildConfig = database.getGuildConfig(guildId);
-
-    let playerIds = [];
-    if (session && session.teams) {
-      playerIds = [
-        ...session.teams.team1.players.map(p => p.id),
-        ...session.teams.team2.players.map(p => p.id)
-      ];
-    }
-
-    activeMixes.delete(guildId);
-
-    if (guildConfig.voiceWaitingId && playerIds.length > 0) {
-      await pullAllToWaitingChannel(guild, playerIds, guildConfig.voiceWaitingId);
-      return interaction.editReply({
-        content: `✅ O MIX foi finalizado por <@${user.id}> e os jogadores foram movidos de volta para a call de espera <#${guildConfig.voiceWaitingId}>!`
-      });
-    }
-
-    return interaction.editReply({
-      content: `✅ O MIX foi finalizado por <@${user.id}>! Obrigado pelo jogo.`
-    });
+    const { finalizeMixSession } = require('../commands/finalizarmix');
+    return await finalizeMixSession(interaction);
   }
 
   // Verificação de sessão ativa para os demais botões da fila
