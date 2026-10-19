@@ -329,7 +329,482 @@ async function preloadPlayerAvatar(player) {
   }
 }
 
+/**
+ * Renderiza a imagem de votação de mapa.
+ * Exibe todos os mapas como cards, com contagem de votos e avatares dos votantes.
+ *
+ * @param {Array}  maps        - Lista de mapas (id, name, image)
+ * @param {Object} votes       - { userId: mapId }
+ * @param {Object} playerMap   - { userId: { displayName, avatarBuffer } }
+ * @param {number} timeLeft    - Segundos restantes
+ */
+async function renderMapVoteImage(maps, votes, playerMap, timeLeft) {
+  const COLS = 5;
+  const ROWS = Math.ceil(maps.length / COLS);
+  const CARD_W = 200;
+  const CARD_H = 155;
+  const GAP = 10;
+  const TOP_PAD = 90;
+  const BOT_PAD = 50;
+  const SIDE_PAD = 30;
+
+  const width = COLS * CARD_W + (COLS - 1) * GAP + SIDE_PAD * 2;
+  const height = TOP_PAD + ROWS * (CARD_H + GAP) - GAP + BOT_PAD;
+
+  const canvas = createCanvas(width, height);
+  const ctx = canvas.getContext('2d');
+
+  // Fundo
+  const bgGrad = ctx.createLinearGradient(0, 0, width, height);
+  bgGrad.addColorStop(0, '#04060A');
+  bgGrad.addColorStop(1, '#070C16');
+  ctx.fillStyle = bgGrad;
+  ctx.fillRect(0, 0, width, height);
+
+  // Linhas geométricas de fundo
+  ctx.save();
+  ctx.strokeStyle = 'rgba(0,229,255,0.03)';
+  ctx.lineWidth = 1;
+  for (let i = -100; i < width + 200; i += 70) {
+    ctx.beginPath();
+    ctx.moveTo(i, 0);
+    ctx.lineTo(i + 150, height);
+    ctx.stroke();
+  }
+  ctx.restore();
+
+  // Faixas zebradas
+  const stripeH = 18;
+  drawHazardStripes(ctx, 0, 0, width, stripeH, 18, '#00E5FF', '#070A10');
+  ctx.fillStyle = '#00F0FF';
+  ctx.fillRect(0, stripeH, width, 2);
+  drawHazardStripes(ctx, 0, height - stripeH, width, stripeH, 18, '#00E5FF', '#070A10');
+  ctx.fillStyle = '#00F0FF';
+  ctx.fillRect(0, height - stripeH - 2, width, 2);
+
+  // Título
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.font = 'bold 26px "SegoeUIBold", "Arial", sans-serif';
+  ctx.fillStyle = '#FFFFFF';
+  ctx.shadowColor = 'rgba(0,229,255,0.7)';
+  ctx.shadowBlur = 12;
+  ctx.fillText('🗺️  VOTAÇÃO DE MAPA  —  VALORANT MIX', width / 2, 38);
+  ctx.shadowBlur = 0;
+
+  const totalVoted = Object.keys(votes).length;
+  ctx.font = 'bold 14px "SegoeUI", "Arial", sans-serif';
+  ctx.fillStyle = '#00E5FF';
+  ctx.fillText(`⏳ ${timeLeft}s restantes   •   📊 ${totalVoted}/10 votos`, width / 2, 68);
+
+  // Pré-carregar imagens dos mapas
+  const mapImages = {};
+  await Promise.all(maps.map(async m => {
+    try {
+      const res = await require('axios').get(m.image, { responseType: 'arraybuffer', timeout: 5000 });
+      mapImages[m.id] = await loadImage(Buffer.from(res.data));
+    } catch (e) { mapImages[m.id] = null; }
+  }));
+
+  // Contagem de votos por mapa
+  const countMap = {};
+  maps.forEach(m => { countMap[m.id] = []; });
+  Object.entries(votes).forEach(([uid, mid]) => {
+    if (countMap[mid]) countMap[mid].push(uid);
+  });
+
+  const maxVotes = Math.max(1, ...maps.map(m => countMap[m.id].length));
+
+  for (let idx = 0; idx < maps.length; idx++) {
+    const m = maps[idx];
+    const col = idx % COLS;
+    const row = Math.floor(idx / COLS);
+    const x = SIDE_PAD + col * (CARD_W + GAP);
+    const y = TOP_PAD + row * (CARD_H + GAP);
+    const voters = countMap[m.id];
+    const voteCount = voters.length;
+    const isWinning = voteCount === maxVotes && voteCount > 0;
+
+    ctx.save();
+    ctx.beginPath();
+    ctx.roundRect(x, y, CARD_W, CARD_H, 8);
+    ctx.clip();
+
+    // Imagem do mapa como fundo
+    if (mapImages[m.id]) {
+      ctx.drawImage(mapImages[m.id], x, y, CARD_W, CARD_H);
+    } else {
+      ctx.fillStyle = '#0A0F1A';
+      ctx.fillRect(x, y, CARD_W, CARD_H);
+    }
+
+    // Overlay escuro gradiente de baixo
+    const overlay = ctx.createLinearGradient(x, y, x, y + CARD_H);
+    overlay.addColorStop(0, 'rgba(0,0,0,0.15)');
+    overlay.addColorStop(0.4, 'rgba(4,6,10,0.45)');
+    overlay.addColorStop(1, 'rgba(4,6,10,0.92)');
+    ctx.fillStyle = overlay;
+    ctx.fillRect(x, y, CARD_W, CARD_H);
+
+    ctx.restore();
+
+    // Borda: neon se líder, sutil se não
+    ctx.save();
+    ctx.beginPath();
+    ctx.roundRect(x, y, CARD_W, CARD_H, 8);
+    ctx.strokeStyle = isWinning ? '#00E5FF' : 'rgba(255,255,255,0.12)';
+    ctx.lineWidth = isWinning ? 2.5 : 1;
+    if (isWinning) {
+      ctx.shadowColor = '#00E5FF';
+      ctx.shadowBlur = 10;
+    }
+    ctx.stroke();
+    ctx.restore();
+
+    // Nome do mapa
+    ctx.save();
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'alphabetic';
+    ctx.font = 'bold 15px "SegoeUIBold", "Arial", sans-serif';
+    ctx.fillStyle = '#FFFFFF';
+    ctx.shadowColor = 'rgba(0,0,0,0.9)';
+    ctx.shadowBlur = 4;
+    ctx.fillText(m.name.toUpperCase(), x + CARD_W / 2, y + CARD_H - 52);
+    ctx.restore();
+
+    // Barra de votos
+    const barY = y + CARD_H - 44;
+    const barW = CARD_W - 20;
+    const barH = 7;
+    const barX = x + 10;
+    const fillW = voteCount > 0 ? (voteCount / maxVotes) * barW : 0;
+
+    ctx.save();
+    ctx.beginPath();
+    ctx.roundRect(barX, barY, barW, barH, 3);
+    ctx.fillStyle = 'rgba(255,255,255,0.12)';
+    ctx.fill();
+
+    if (fillW > 0) {
+      const barGrad = ctx.createLinearGradient(barX, 0, barX + fillW, 0);
+      if (isWinning) {
+        barGrad.addColorStop(0, '#00D2FF');
+        barGrad.addColorStop(1, '#00FFF0');
+      } else {
+        barGrad.addColorStop(0, '#0066CC');
+        barGrad.addColorStop(1, '#00A8FF');
+      }
+      ctx.beginPath();
+      ctx.roundRect(barX, barY, fillW, barH, 3);
+      ctx.fillStyle = barGrad;
+      ctx.fill();
+    }
+    ctx.restore();
+
+    // Contagem de votos
+    ctx.save();
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'alphabetic';
+    ctx.font = 'bold 13px "SegoeUIBold", "Arial", sans-serif';
+    ctx.fillStyle = isWinning ? '#00E5FF' : '#94A3B8';
+    ctx.fillText(`${voteCount} voto${voteCount !== 1 ? 's' : ''}`, x + CARD_W / 2, y + CARD_H - 26);
+    ctx.restore();
+
+    // Avatares dos votantes
+    const AVT = 20;
+    const AVT_GAP = 4;
+    const maxShow = Math.min(voters.length, 5);
+    const rowW = maxShow * AVT + (maxShow - 1) * AVT_GAP;
+    let avX = x + (CARD_W - rowW) / 2;
+    const avY = y + CARD_H - 14;
+
+    for (let vi = 0; vi < maxShow; vi++) {
+      const uid = voters[vi];
+      const pData = playerMap[uid];
+      ctx.save();
+      ctx.beginPath();
+      ctx.arc(avX + AVT / 2, avY, AVT / 2, 0, Math.PI * 2);
+      ctx.clip();
+
+      let drawn = false;
+      if (pData && pData.avatarBuffer) {
+        try {
+          const img = await loadImage(pData.avatarBuffer);
+          ctx.drawImage(img, avX, avY - AVT / 2, AVT, AVT);
+          drawn = true;
+        } catch (e) {}
+      }
+      if (!drawn) {
+        ctx.fillStyle = '#1D4ED8';
+        ctx.fillRect(avX, avY - AVT / 2, AVT, AVT);
+        ctx.font = 'bold 9px sans-serif';
+        ctx.fillStyle = '#FFF';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        const initials = pData ? (pData.displayName || 'P')[0].toUpperCase() : '?';
+        ctx.fillText(initials, avX + AVT / 2, avY);
+      }
+      ctx.restore();
+
+      // Borda do avatar
+      ctx.save();
+      ctx.beginPath();
+      ctx.arc(avX + AVT / 2, avY, AVT / 2, 0, Math.PI * 2);
+      ctx.strokeStyle = '#00E5FF';
+      ctx.lineWidth = 1.5;
+      ctx.stroke();
+      ctx.restore();
+
+      avX += AVT + AVT_GAP;
+    }
+  }
+
+  // Rodapé
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.font = 'bold 12px "SegoeUIBold", "Arial", sans-serif';
+  ctx.fillStyle = '#00E5FF';
+  ctx.fillText('discord.gg/xd', width / 2, height - 30);
+
+  return canvas.toBuffer('image/png');
+}
+
+/**
+ * Renderiza a imagem final dos times com o mapa de fundo.
+ *
+ * @param {Object} team1      - { name, side, players: [{ displayName, rankName, mmr, badge, avatarBuffer }] }
+ * @param {Object} team2      - { name, side, players: [...] }
+ * @param {Object} winningMap - { name, image }
+ */
+async function renderTeamsImage(team1, team2, winningMap) {
+  const W = 1000;
+  const H = 540;
+  const canvas = createCanvas(W, H);
+  const ctx = canvas.getContext('2d');
+
+  // --- Fundo: imagem do mapa ---
+  let mapImgLoaded = false;
+  try {
+    const res = await require('axios').get(winningMap.image, { responseType: 'arraybuffer', timeout: 6000 });
+    const mapImg = await loadImage(Buffer.from(res.data));
+    ctx.drawImage(mapImg, 0, 0, W, H);
+    mapImgLoaded = true;
+  } catch (e) {}
+
+  if (!mapImgLoaded) {
+    const bg = ctx.createLinearGradient(0, 0, W, H);
+    bg.addColorStop(0, '#04060A');
+    bg.addColorStop(1, '#0A1020');
+    ctx.fillStyle = bg;
+    ctx.fillRect(0, 0, W, H);
+  }
+
+  // Overlay escuro sobre o mapa
+  const overlayGrad = ctx.createLinearGradient(0, 0, W, 0);
+  overlayGrad.addColorStop(0, 'rgba(0,40,120,0.82)');
+  overlayGrad.addColorStop(0.45, 'rgba(4,6,12,0.70)');
+  overlayGrad.addColorStop(0.55, 'rgba(4,6,12,0.70)');
+  overlayGrad.addColorStop(1, 'rgba(120,40,0,0.82)');
+  ctx.fillStyle = overlayGrad;
+  ctx.fillRect(0, 0, W, H);
+
+  // Faixas zebradas topo e base
+  const stripeH = 18;
+  drawHazardStripes(ctx, 0, 0, W, stripeH, 18, '#00E5FF', '#070A10');
+  ctx.fillStyle = '#00F0FF';
+  ctx.fillRect(0, stripeH, W, 2);
+  drawHazardStripes(ctx, 0, H - stripeH, W, stripeH, 18, '#00E5FF', '#070A10');
+  ctx.fillStyle = '#00F0FF';
+  ctx.fillRect(0, H - stripeH - 2, W, 2);
+
+  // Linha divisória vertical central
+  ctx.save();
+  ctx.strokeStyle = 'rgba(255,255,255,0.18)';
+  ctx.lineWidth = 1;
+  ctx.setLineDash([6, 6]);
+  ctx.beginPath();
+  ctx.moveTo(W / 2, stripeH + 4);
+  ctx.lineTo(W / 2, H - stripeH - 4);
+  ctx.stroke();
+  ctx.restore();
+
+  // Título central
+  ctx.save();
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.font = 'bold 22px "SegoeUIBold", "Arial", sans-serif';
+  ctx.fillStyle = '#FFFFFF';
+  ctx.shadowColor = 'rgba(0,229,255,0.8)';
+  ctx.shadowBlur = 14;
+  ctx.fillText(`⚔️  PARTIDA INICIADA  —  ${winningMap.name.toUpperCase()}`, W / 2, 50);
+  ctx.shadowBlur = 0;
+  ctx.restore();
+
+  // Subtítulo VS
+  ctx.save();
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.font = 'bold 36px "SegoeUIBold", "Arial", sans-serif';
+  ctx.fillStyle = 'rgba(255,255,255,0.12)';
+  ctx.fillText('VS', W / 2, H / 2 + 10);
+  ctx.restore();
+
+  // Helper para renderizar cada time
+  async function drawTeam(team, side) {
+    const isLeft = side === 'left';
+    const teamColor = isLeft ? '#1E90FF' : '#FF6B00';
+    const panelX = isLeft ? 30 : W / 2 + 14;
+    const panelW = W / 2 - 44;
+
+    // Cabeçalho do time
+    ctx.save();
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.font = 'bold 20px "SegoeUIBold", "Arial", sans-serif';
+    ctx.fillStyle = teamColor;
+    ctx.shadowColor = teamColor;
+    ctx.shadowBlur = 12;
+    ctx.fillText(team.name.toUpperCase(), panelX + panelW / 2, 88);
+    ctx.shadowBlur = 0;
+    ctx.font = 'bold 13px "SegoeUI", "Arial", sans-serif';
+    ctx.fillStyle = 'rgba(255,255,255,0.65)';
+    ctx.fillText(team.side.replace(/[⚔️🛡️]/g, '').trim(), panelX + panelW / 2, 110);
+    ctx.restore();
+
+    // Linha separadora sob o cabeçalho
+    ctx.save();
+    const lineGrad = ctx.createLinearGradient(panelX, 0, panelX + panelW, 0);
+    lineGrad.addColorStop(0, 'transparent');
+    lineGrad.addColorStop(0.3, teamColor);
+    lineGrad.addColorStop(0.7, teamColor);
+    lineGrad.addColorStop(1, 'transparent');
+    ctx.strokeStyle = lineGrad;
+    ctx.lineWidth = 1.5;
+    ctx.beginPath();
+    ctx.moveTo(panelX, 122);
+    ctx.lineTo(panelX + panelW, 122);
+    ctx.stroke();
+    ctx.restore();
+
+    // Jogadores
+    const playerStartY = 138;
+    const rowH = 68;
+
+    for (let i = 0; i < team.players.length; i++) {
+      const p = team.players[i];
+      const rowY = playerStartY + i * rowH;
+
+      // Card de fundo do jogador
+      ctx.save();
+      ctx.beginPath();
+      ctx.roundRect(panelX, rowY, panelW, rowH - 6, 6);
+      const cardGrad = ctx.createLinearGradient(panelX, rowY, panelX + panelW, rowY);
+      if (isLeft) {
+        cardGrad.addColorStop(0, 'rgba(30,70,160,0.55)');
+        cardGrad.addColorStop(1, 'rgba(5,15,40,0.55)');
+      } else {
+        cardGrad.addColorStop(0, 'rgba(5,15,40,0.55)');
+        cardGrad.addColorStop(1, 'rgba(140,50,0,0.55)');
+      }
+      ctx.fillStyle = cardGrad;
+      ctx.fill();
+      ctx.strokeStyle = `${teamColor}44`;
+      ctx.lineWidth = 1;
+      ctx.stroke();
+      ctx.restore();
+
+      // Avatar
+      const AVT = 44;
+      const avX = panelX + 10;
+      const avY = rowY + (rowH - 6 - AVT) / 2;
+
+      ctx.save();
+      ctx.beginPath();
+      ctx.arc(avX + AVT / 2, avY + AVT / 2, AVT / 2, 0, Math.PI * 2);
+      ctx.clip();
+
+      let drawn = false;
+      if (p.avatarBuffer) {
+        try {
+          const img = await loadImage(p.avatarBuffer);
+          ctx.drawImage(img, avX, avY, AVT, AVT);
+          drawn = true;
+        } catch (e) {}
+      }
+      if (!drawn) {
+        const ag = ctx.createLinearGradient(avX, avY, avX + AVT, avY + AVT);
+        ag.addColorStop(0, isLeft ? '#1E3A8A' : '#7C2D12');
+        ag.addColorStop(1, isLeft ? '#1D4ED8' : '#EA580C');
+        ctx.fillStyle = ag;
+        ctx.fillRect(avX, avY, AVT, AVT);
+        ctx.fillStyle = '#FFF';
+        ctx.font = 'bold 18px sans-serif';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText((p.displayName || 'P')[0].toUpperCase(), avX + AVT / 2, avY + AVT / 2);
+      }
+      ctx.restore();
+
+      // Borda do avatar
+      ctx.save();
+      ctx.beginPath();
+      ctx.arc(avX + AVT / 2, avY + AVT / 2, AVT / 2, 0, Math.PI * 2);
+      ctx.strokeStyle = teamColor;
+      ctx.lineWidth = 2;
+      ctx.shadowColor = teamColor;
+      ctx.shadowBlur = 6;
+      ctx.stroke();
+      ctx.restore();
+
+      // Textos do jogador
+      const textX = avX + AVT + 12;
+      const textMaxW = panelW - AVT - 24;
+
+      ctx.save();
+      ctx.textAlign = 'left';
+      ctx.textBaseline = 'alphabetic';
+
+      // Nome
+      ctx.font = 'bold 14px "SegoeUIBold", "Arial", sans-serif';
+      ctx.fillStyle = '#FFFFFF';
+      ctx.shadowColor = 'rgba(0,0,0,0.8)';
+      ctx.shadowBlur = 4;
+
+      // Truncar nome se muito longo
+      let name = p.displayName || p.username || 'Jogador';
+      while (ctx.measureText(name).width > textMaxW && name.length > 4) {
+        name = name.slice(0, -1);
+      }
+      if (name !== (p.displayName || p.username || 'Jogador')) name += '…';
+      ctx.fillText(name, textX, rowY + 26);
+
+      // Elo
+      const rankColor = getRankColor(p.rankName || '');
+      ctx.font = 'bold 11px "SegoeUIBold", "Arial", sans-serif';
+      ctx.fillStyle = rankColor;
+      ctx.shadowBlur = 0;
+      const rankLabel = `${p.badge || ''} ${(p.rankName || 'Sem Ranque').toUpperCase()}`;
+      ctx.fillText(rankLabel, textX, rowY + 46);
+      ctx.restore();
+    }
+  }
+
+  await drawTeam(team1, 'left');
+  await drawTeam(team2, 'right');
+
+  // Rodapé
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.font = 'bold 12px "SegoeUIBold", "Arial", sans-serif';
+  ctx.fillStyle = '#00E5FF';
+  ctx.fillText('discord.gg/xd  •  Bom jogo a todos!', W / 2, H - 30);
+
+  return canvas.toBuffer('image/png');
+}
+
 module.exports = {
   renderLobbyImage,
+  renderMapVoteImage,
+  renderTeamsImage,
   preloadPlayerAvatar
 };

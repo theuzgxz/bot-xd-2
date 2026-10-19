@@ -1,26 +1,36 @@
 const {
-  EmbedBuilder,
   ActionRowBuilder,
   StringSelectMenuBuilder,
   ButtonBuilder,
-  ButtonStyle
+  ButtonStyle,
+  AttachmentBuilder
 } = require('discord.js');
-const { MAPS, COLORS, MAP_VOTE_DURATION } = require('../config');
+const { MAPS, MAP_VOTE_DURATION } = require('../config');
 const { movePlayersToTeamChannels } = require('../services/voiceManager');
 const database = require('../database');
+const { renderMapVoteImage, renderTeamsImage, preloadPlayerAvatar } = require('../services/imageGenerator');
 
 /**
- * Inicia a fase de votação de mapa após o balanceamento dos times
+ * Inicia a fase de votação de mapa após o balanceamento dos times.
+ * Usa imagens geradas via canvas em vez de embeds de texto.
  */
 async function startMapVote(interactionOrChannel, guild, team1, team2, guildConfig) {
   const channel = interactionOrChannel.channel || interactionOrChannel;
   const playerIds = new Set([...team1.players.map(p => p.id), ...team2.players.map(p => p.id)]);
 
-  const votes = {}; // userId -> mapId
+  const votes = {};  // userId -> mapId
   let timeLeft = MAP_VOTE_DURATION;
   let finished = false;
 
-  // Lista dos mapas disponíveis para votar
+  // Pré-carregar avatares de todos os jogadores para uso na imagem
+  const allPlayers = [...team1.players, ...team2.players];
+  const playerMap = {};
+  for (const p of allPlayers) {
+    await preloadPlayerAvatar(p);
+    playerMap[p.id] = p;
+  }
+
+  // Menu de seleção de mapa (mantido para interação do Discord)
   const mapOptions = MAPS.map(m => ({
     label: m.name,
     value: m.id,
@@ -35,39 +45,30 @@ async function startMapVote(interactionOrChannel, guild, team1, team2, guildConf
 
   const row = new ActionRowBuilder().addComponents(selectMenu);
 
-  function createVoteEmbed() {
-    // Contagem de votos por mapa
-    const countMap = {};
-    MAPS.forEach(m => { countMap[m.id] = 0; });
-    Object.values(votes).forEach(mapId => {
-      countMap[mapId] = (countMap[mapId] || 0) + 1;
-    });
-
-    const totalVoted = Object.keys(votes).length;
-
-    const mapListText = MAPS.map(m => {
-      const voteCount = countMap[m.id] || 0;
-      const bar = '█'.repeat(voteCount) + '░'.repeat(Math.max(0, 10 - voteCount));
-      return `**${m.name}**: ${voteCount} voto(s) \`[${bar}]\``;
-    }).join('\n');
-
-    return new EmbedBuilder()
-      .setColor(COLORS.PRIMARY)
-      .setTitle('🗺️ VOTAÇÃO DE MAPA - VALORANT MIX')
-      .setDescription(
-        `Apenas os **10 jogadores do MIX** podem votar no mapa da partida!\n` +
-        `⏳ Tempo restante: **${timeLeft}s**\n` +
-        `📊 Votos computados: **${totalVoted}/10**\n\n` +
-        `**Placar de Votação:**\n${mapListText}`
-      )
-      .setFooter({ text: 'Selecione sua escolha no menu abaixo. Apenas 1 voto por jogador.' })
-      .setTimestamp();
+  // Helper: gera e retorna um AttachmentBuilder com a imagem atual da votação
+  async function buildVoteAttachment() {
+    const buf = await renderMapVoteImage(MAPS, votes, playerMap, timeLeft);
+    const name = `mapvote-${Date.now()}.png`;
+    return new AttachmentBuilder(buf, { name });
   }
 
+  // Enviar mensagem inicial com a imagem
   const voteMessage = await channel.send({
-    embeds: [createVoteEmbed()],
+    files: [await buildVoteAttachment()],
     components: [row]
   });
+
+  // Helper: atualiza a mensagem editando a imagem
+  async function updateVoteImage(keepComponents = true) {
+    try {
+      await voteMessage.edit({
+        files: [await buildVoteAttachment()],
+        components: keepComponents ? [row] : []
+      });
+    } catch (e) {
+      // Ignora erros de edição (rate limit, mensagem deletada, etc.)
+    }
+  }
 
   // Coletor de interações do Select Menu
   const collector = voteMessage.createMessageComponentCollector({
@@ -75,21 +76,14 @@ async function startMapVote(interactionOrChannel, guild, team1, team2, guildConf
     time: MAP_VOTE_DURATION * 1000
   });
 
-  // Atualização periódica do timer no embed a cada 5 segundos
+  // Atualização periódica do timer a cada 5 segundos
   const interval = setInterval(async () => {
     timeLeft -= 5;
     if (timeLeft <= 0 || finished) {
       clearInterval(interval);
       return;
     }
-    try {
-      await voteMessage.edit({
-        embeds: [createVoteEmbed()],
-        components: [row]
-      });
-    } catch (e) {
-      clearInterval(interval);
-    }
+    await updateVoteImage(true);
   }, 5000);
 
   collector.on('collect', async i => {
@@ -109,14 +103,12 @@ async function startMapVote(interactionOrChannel, guild, team1, team2, guildConf
       ephemeral: true
     });
 
+    // Atualiza a imagem mostrando o novo voto (avatar do votante)
+    await updateVoteImage(true);
+
     // Se todos os 10 jogadores já votaram, encerra mais cedo
     if (Object.keys(votes).length >= 10) {
       collector.stop('all_voted');
-    } else {
-      await voteMessage.edit({
-        embeds: [createVoteEmbed()],
-        components: [row]
-      }).catch(() => {});
     }
   });
 
@@ -147,16 +139,9 @@ async function startMapVote(interactionOrChannel, guild, team1, team2, guildConf
     // Se ninguém votou ou houve empate, sorteia entre os mais votados
     const winningMap = candidates[Math.floor(Math.random() * candidates.length)] || MAPS[0];
 
-    // Desabilitar o menu de votação
-    await voteMessage.edit({
-      embeds: [
-        createVoteEmbed().setDescription(
-          `🏁 **VOTAÇÃO ENCERRADA!**\n` +
-          `O mapa escolhido pela votação foi **${winningMap.name}** com **${highestVotes} voto(s)**!`
-        )
-      ],
-      components: []
-    }).catch(() => {});
+    // Atualiza a imagem de votação final (timeLeft = 0) e remove o menu
+    timeLeft = 0;
+    await updateVoteImage(false);
 
     // Mover os jogadores para os canais de voz
     const moveResult = await movePlayersToTeamChannels(guild, team1, team2, guildConfig);
@@ -175,36 +160,25 @@ async function startMapVote(interactionOrChannel, guild, team1, team2, guildConf
       }
     });
 
-    // Criar Embed de Início de Partida com a arte oficial do mapa
-    const matchStartEmbed = new EmbedBuilder()
-      .setColor(COLORS.SUCCESS)
-      .setTitle(`⚔️ PARTIDA INICIADA - MAPA: ${winningMap.name.toUpperCase()}`)
-      .setDescription(
-        `O mapa **${winningMap.name}** venceu a votação com **${highestVotes} voto(s)**!\n\n` +
-        `**Status da Movimentação de Voz:**\n` +
-        (moveResult.success
-          ? `🔊 **Time A** movido para <#${guildConfig.voiceTeamAId}>\n` +
-            `🔊 **Time B** movido para <#${guildConfig.voiceTeamBId}>\n`
-          : `⚠️ *${moveResult.error}*`)
-      )
-      .setImage(winningMap.image)
-      .setFooter({ text: 'Bom jogo a todos! Ao finalizar, use /finalizarmix para retornar à call principal.' })
-      .setTimestamp();
+    // ─── Imagem final: Times A e B com o mapa vencedor de fundo ────────────
+    const teamsImageBuf = await renderTeamsImage(team1, team2, winningMap);
+    const teamsAttachment = new AttachmentBuilder(teamsImageBuf, { name: `teams-${Date.now()}.png` });
 
-    // Notificação se alguém não estava conectado no voice
-    let warnings = '';
-    if (moveResult.success && moveResult.results) {
-      const notInVoice = [
-        ...moveResult.results.teamA.notInVoice.map(n => `• **${n}** (Time A)`),
-        ...moveResult.results.teamB.notInVoice.map(n => `• **${n}** (Time B)`)
-      ];
-      if (notInVoice.length > 0) {
-        warnings = `\n\n⚠️ **Jogadores fora de chamada:**\n${notInVoice.join('\n')}\n*Por favor, conectem-se na chamada do seu time!*`;
+    // Texto sobre movimentação de voz
+    let moveContent = '';
+    if (moveResult.success) {
+      moveContent = `🔊 **Time A** → <#${guildConfig.voiceTeamAId}>  •  🔊 **Time B** → <#${guildConfig.voiceTeamBId}>`;
+      if (moveResult.results) {
+        const notInVoice = [
+          ...moveResult.results.teamA.notInVoice.map(n => `• **${n}** (Time A)`),
+          ...moveResult.results.teamB.notInVoice.map(n => `• **${n}** (Time B)`)
+        ];
+        if (notInVoice.length > 0) {
+          moveContent += `\n\n⚠️ **Jogadores fora de chamada:**\n${notInVoice.join('\n')}\n*Por favor, conectem-se na chamada do seu time!*`;
+        }
       }
-    }
-
-    if (warnings) {
-      matchStartEmbed.setDescription(matchStartEmbed.data.description + warnings);
+    } else {
+      moveContent = `⚠️ *${moveResult.error || 'Canais de voz não configurados.'}*`;
     }
 
     // Botão para finalizar o MIX e puxar todos de volta
@@ -217,7 +191,8 @@ async function startMapVote(interactionOrChannel, guild, team1, team2, guildConf
     );
 
     await channel.send({
-      embeds: [matchStartEmbed],
+      content: moveContent || null,
+      files: [teamsAttachment],
       components: [endRow]
     });
   });
@@ -226,3 +201,4 @@ async function startMapVote(interactionOrChannel, guild, team1, team2, guildConf
 module.exports = {
   startMapVote
 };
+
