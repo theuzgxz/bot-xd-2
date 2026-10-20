@@ -14,52 +14,57 @@ module.exports = {
     {
       id: 'ascent',
       name: 'Ascent',
-      image: 'https://images.contentstack.io/v3/assets/blt370612131b6e0eb3/blt2b1c7c10d3e5aa52/5eb9b95922e4c4495f46cfeb/ascent-featured.png'
+      image: 'https://media.valorant-api.com/maps/7eaecc1b-4337-bbf6-6ab9-04b8f06b3319/splash.png'
     },
     {
       id: 'bind',
       name: 'Bind',
-      image: 'https://images.contentstack.io/v3/assets/blt370612131b6e0eb3/blt804f323e25b90875/5eb9b95882c57849646b14d2/bind-featured.png'
+      image: 'https://media.valorant-api.com/maps/2c9d57ec-4431-9c5e-2939-8f9ef6dd5cba/splash.png'
     },
     {
       id: 'haven',
       name: 'Haven',
-      image: 'https://images.contentstack.io/v3/assets/blt370612131b6e0eb3/blte03565cf3304560a/5eb9b95822e4c4495f46cfe7/haven-featured.png'
+      image: 'https://media.valorant-api.com/maps/2bee0dc9-4ffe-519b-1cbd-7fbe763a6047/splash.png'
     },
     {
       id: 'split',
       name: 'Split',
-      image: 'https://images.contentstack.io/v3/assets/blt370612131b6e0eb3/blt72e735e824fa9334/5eb9b95882c57849646b14ce/split-featured.png'
+      image: 'https://media.valorant-api.com/maps/d960549e-485c-e861-8d71-aa9d1aed12a2/splash.png'
     },
     {
       id: 'icebox',
       name: 'Icebox',
-      image: 'https://images.contentstack.io/v3/assets/blt370612131b6e0eb3/blt3291ebccf57423cf/5f778a87b6059c0f993d0d3c/Icebox_Featured_Image.png'
+      image: 'https://media.valorant-api.com/maps/e2ad5c54-4114-a870-9641-8ea21279579a/splash.png'
     },
     {
       id: 'breeze',
       name: 'Breeze',
-      image: 'https://images.contentstack.io/v3/assets/blt370612131b6e0eb3/bltd49e89b33a01dd08/60830cb8592c300f3c5ad83b/breeze-featured.png'
+      image: 'https://media.valorant-api.com/maps/2fb9a4fd-47b8-4e7d-a969-74b4046ebd53/splash.png'
     },
     {
       id: 'fracture',
       name: 'Fracture',
-      image: 'https://images.contentstack.io/v3/assets/blt370612131b6e0eb3/blt56920ad51980ee9e/6131b71457884d5d9964528c/Fracture_FeaturedImage.png'
+      image: 'https://media.valorant-api.com/maps/b529448b-4d60-346e-e89e-00a4c527a405/splash.png'
+    },
+    {
+      id: 'pearl',
+      name: 'Pearl (Pérola)',
+      image: 'https://media.valorant-api.com/maps/fd267378-4d1d-484f-ff52-77821ed10dc2/splash.png'
     },
     {
       id: 'lotus',
       name: 'Lotus',
-      image: 'https://images.contentstack.io/v3/assets/blt370612131b6e0eb3/blt1cbca2e2e92c2b74/63b8be92f241a27e3831ea23/Lotus_Featured_Image.png'
+      image: 'https://media.valorant-api.com/maps/2fe4ed3a-450a-948b-6d6b-e89a78e680a9/splash.png'
     },
     {
       id: 'sunset',
       name: 'Sunset',
-      image: 'https://images.contentstack.io/v3/assets/blt370612131b6e0eb3/blt51079541a7f7c46f/64e83151b72e50cf65c3dc74/Sunset_Featured_Image.png'
+      image: 'https://media.valorant-api.com/maps/92584fbe-486a-b1b2-9faa-39b0f486b498/splash.png'
     },
     {
       id: 'abyss',
       name: 'Abyss',
-      image: 'https://images.contentstack.io/v3/assets/blt370612131b6e0eb3/bltef9c8983e20e1781/6667500cf0cb22501a4db415/Abyss_Featured_Image.png'
+      image: 'https://media.valorant-api.com/maps/224b0a95-48b9-f703-1bd8-67aca101a61f/splash.png'
     }
   ],
 

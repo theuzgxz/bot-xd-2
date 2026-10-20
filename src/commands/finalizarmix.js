@@ -1,7 +1,8 @@
-const { SlashCommandBuilder, EmbedBuilder } = require('discord.js');
+const { SlashCommandBuilder, EmbedBuilder, AttachmentBuilder } = require('discord.js');
 const { activeMixes } = require('../handlers/mixHandler');
 const { pullAllToWaitingChannel } = require('../services/voiceManager');
 const { fetchCustomMatchStats } = require('../services/valorantApi');
+const { renderMvpImage, preloadPlayerAvatar } = require('../services/imageGenerator');
 const database = require('../database');
 const { COLORS } = require('../config');
 const { hasMixPermission } = require('../utils/permissions');
@@ -65,15 +66,13 @@ async function finalizeMixSession(interaction) {
   const embed = new EmbedBuilder()
     .setColor(COLORS.SUCCESS)
     .setTitle('🏁 PARTIDA DE MIX FINALIZADA!')
-    .setDescription(`A partida foi encerrada com sucesso!${pullInfo}\n\nObrigado a todos que participaram! Para abrir outro jogo, use \`/mix\`.`)
+    .setDescription(`A partida foi encerrada com sucesso!${pullInfo}\n\nObrigado a todos que participaram! O bot está processando as estatísticas da partida e a revelação do **MVP**...`)
     .setTimestamp();
 
   await interaction.editReply({ embeds: [embed] });
 
   // -------------------------------------------------------
   // 1) Salva participação IMEDIATA para todos os jogadores
-  //    (com ou sem conta Riot vinculada) — garante que gamesPlayed
-  //    sobe no /melhores mesmo que a API do Valorant falhe ou atrase
   // -------------------------------------------------------
   let participantsRegistered = 0;
   for (const player of allPlayers) {
@@ -88,66 +87,73 @@ async function finalizeMixSession(interaction) {
   console.log(`[finalizarmix] ${participantsRegistered} participacoes registradas imediatamente.`);
 
   // -------------------------------------------------------
-  // 2) Busca automática dos stats na API do Valorant (assíncrono)
-  //    Tentará enriquecer os dados já salvos com kills e vitórias
+  // 2) Busca automática dos stats na API e eleição do MVP da partida
   // -------------------------------------------------------
   setImmediate(() => {
-    processMatchStats(allPlayers, matchStartedAt, interaction.channel).catch(err => {
+    processMatchStats(allPlayers, matchStartedAt, interaction.channel, interaction.guild).catch(err => {
       console.error('[finalizarmix] Erro ao processar stats da partida:', err);
     });
   });
 }
 
 /**
- * Busca a partida customizada na API e salva os stats de cada jogador.
- * Enviará uma mensagem no canal informando se conseguiu ou não processar.
+ * Busca a partida customizada na API, enriquece os stats e elege o MVP da partida
  */
-async function processMatchStats(allPlayers, matchStartedAt, channel) {
-  // Procura o primeiro jogador com conta Riot vinculada para consultar a API
-  const pivot = allPlayers.find(p => {
+async function processMatchStats(allPlayers, matchStartedAt, channel, guild) {
+  // Procura jogadores com conta Riot vinculada
+  const linkedPlayers = allPlayers.filter(p => {
     const dbUser = database.getUser(p.id);
     return dbUser && dbUser.riotName && dbUser.riotTag;
   });
 
-  if (!pivot) {
+  if (linkedPlayers.length === 0) {
     console.log('[finalizarmix] Nenhum jogador com conta Riot vinculada para consultar a API.');
     try {
       await channel.send({
-        content: `⚠️ **Participação registrada, mas sem kills/vitórias.** Nenhum jogador tem conta Riot vinculada. Use \`/vincular\` para ter kills e WR computados automaticamente.`
+        content: `⚠️ **Participação registrada, mas sem MVP e kills automáticos.** Nenhum jogador tem conta Riot vinculada. Usem \`/vincular nick#tag\` para que o MVP da partida seja eleito automaticamente!`
       });
     } catch (_) {}
     return;
   }
 
-  const pivotDb = database.getUser(pivot.id);
+  // Tentar encontrar a partida personalizada na API com até 3 tentativas
+  let matchData = null;
+  const attempts = 3;
 
-  console.log(`[finalizarmix] Aguardando 30s para a API processar a partida... (pivot: ${pivotDb.riotName}#${pivotDb.riotTag})`);
+  for (let a = 1; a <= attempts; a++) {
+    console.log(`[finalizarmix] Tentativa ${a}/${attempts}: Aguardando dados da partida personalizada na Riot API...`);
+    // Aguardar 15 segundos entre tentativas para a Riot consolidar os dados
+    await new Promise(resolve => setTimeout(resolve, 15_000));
 
-  // Aguarda 30 segundos para a Riot API ter processado a partida
-  await new Promise(resolve => setTimeout(resolve, 30_000));
+    for (const pivot of linkedPlayers) {
+      const pivotDb = database.getUser(pivot.id);
+      matchData = await fetchCustomMatchStats(
+        pivotDb.riotName,
+        pivotDb.riotTag,
+        'br',
+        matchStartedAt
+      );
+      if (matchData) break;
+    }
 
-  const matchData = await fetchCustomMatchStats(
-    pivotDb.riotName,
-    pivotDb.riotTag,
-    'br',
-    matchStartedAt
-  );
+    if (matchData) break;
+  }
 
   if (!matchData) {
-    console.log('[finalizarmix] Partida customizada nao encontrada na API apos finalizar.');
+    console.log('[finalizarmix] Partida customizada nao encontrada na API apos tentativas.');
     try {
       await channel.send({
         content:
-          `⚠️ **Participação registrada! Kills e vitórias não foram encontrados na API do Valorant.**\n` +
-          `Possíveis causas: a partida ainda não foi processada pela Riot, a API está indisponível, ` +
-          `ou a partida não foi do tipo **Personalizada**.\n` +
-          `O \`/melhores\` já mostra quem jogou — kills e WR serão atualizados nas próximas partidas.`
+          `⚠️ **Partida de MIX registrada!** Os stats detalhados da Riot ainda não foram indexados pela API ou a partida não foi configurada no modo Personalizado.\n` +
+          `O ranking do \`/melhores\` já computou a presença de todos os jogadores!`
       });
     } catch (_) {}
     return;
   }
 
-  // Cria um mapa riotName#tag -> stats da API
+  // -------------------------------------------------------
+  // Atualiza stats de cada jogador que jogou
+  // -------------------------------------------------------
   const apiStatsMap = new Map();
   for (const p of matchData.players) {
     const key = `${p.name.toLowerCase()}#${p.tag.toLowerCase()}`;
@@ -155,7 +161,6 @@ async function processMatchStats(allPlayers, matchStartedAt, channel) {
   }
 
   let updated = 0;
-
   for (const player of allPlayers) {
     const dbUser = database.getUser(player.id);
     if (!dbUser || !dbUser.riotName || !dbUser.riotTag) continue;
@@ -163,34 +168,108 @@ async function processMatchStats(allPlayers, matchStartedAt, channel) {
     const key = `${dbUser.riotName.toLowerCase()}#${dbUser.riotTag.toLowerCase()}`;
     const apiPlayer = apiStatsMap.get(key);
 
-    if (!apiPlayer) {
-      console.log(`[finalizarmix] Jogador ${dbUser.riotName}#${dbUser.riotTag} nao encontrado na resposta da API.`);
-      continue;
+    if (apiPlayer) {
+      database.enrichPlayerStats(player.id, {
+        kills: apiPlayer.kills,
+        won:   apiPlayer.won
+      });
+      updated++;
     }
+  }
 
-    // Enriquece os stats já registrados com kills e vitória da API
-    database.enrichPlayerStats(player.id, {
-      kills: apiPlayer.kills,
-      won:   apiPlayer.won
+  console.log(`[finalizarmix] Stats enriquecidos para ${updated} jogadores da partida.`);
+
+  // -------------------------------------------------------
+  // ELEIÇÃO DO MVP DA PARTIDA PERSONALIZADA
+  // -------------------------------------------------------
+  const sortedApiPlayers = matchData.players.slice().sort((a, b) => {
+    // 1. Maior pontuação de combate (Score)
+    if ((b.score || 0) !== (a.score || 0)) return (b.score || 0) - (a.score || 0);
+    // 2. Maior número de kills
+    if ((b.kills || 0) !== (a.kills || 0)) return (b.kills || 0) - (a.kills || 0);
+    // 3. Melhor KDA
+    const kdaB = ((b.kills || 0) + (b.assists || 0)) / Math.max(1, (b.deaths || 0));
+    const kdaA = ((a.kills || 0) + (a.assists || 0)) / Math.max(1, (a.deaths || 0));
+    return kdaB - kdaA;
+  });
+
+  if (sortedApiPlayers.length > 0) {
+    const mvpApi = sortedApiPlayers[0];
+
+    // Localizar jogador correspondente no Discord
+    let mvpDiscord = allPlayers.find(p => {
+      const dbUser = database.getUser(p.id);
+      const rName = dbUser?.riotName || p.riotName;
+      const rTag = dbUser?.riotTag || p.riotTag;
+      return rName && rTag &&
+        rName.toLowerCase() === mvpApi.name.toLowerCase() &&
+        rTag.toLowerCase() === mvpApi.tag.toLowerCase();
+    }) || allPlayers.find(p => {
+      const dbUser = database.getUser(p.id);
+      const rName = dbUser?.riotName || p.riotName;
+      return rName && rName.toLowerCase() === mvpApi.name.toLowerCase();
     });
 
-    updated++;
-  }
+    // Se tiver jogador do Discord, carrega avatar atualizado
+    let avatarBuffer = null;
+    let discordMention = '';
+    let discordDisplayName = mvpApi.name;
 
-  if (updated > 0) {
-    console.log(`[finalizarmix] Stats enriquecidos para ${updated} jogadores da partida.`);
+    if (mvpDiscord) {
+      discordMention = `<@${mvpDiscord.id}>`;
+      discordDisplayName = mvpDiscord.displayName || mvpDiscord.username;
+
+      if (!mvpDiscord.avatarBuffer) {
+        try {
+          if (guild) {
+            const member = await guild.members.fetch(mvpDiscord.id).catch(() => null);
+            if (member) {
+              mvpDiscord.avatarUrl = member.user.displayAvatarURL({ extension: 'png', size: 128 });
+            }
+          }
+          await preloadPlayerAvatar(mvpDiscord);
+        } catch (_) {}
+      }
+      avatarBuffer = mvpDiscord.avatarBuffer;
+    }
+
     try {
-      await channel.send({
-        content: `📊 **Stats da partida atualizados!** ${updated} jogadores tiveram kills e vitórias computados automaticamente. Use \`/melhores\` para ver o ranking!`
+      const mvpImageBuf = await renderMvpImage({
+        discordName: discordDisplayName,
+        riotName: mvpApi.name,
+        riotTag: mvpApi.tag,
+        rankName: mvpDiscord?.rankName || 'Radiante',
+        badge: mvpDiscord?.badge || '🔥',
+        avatarBuffer: avatarBuffer,
+        mapName: matchData.map || 'Valorant',
+        kills: mvpApi.kills || 0,
+        deaths: mvpApi.deaths || 0,
+        assists: mvpApi.assists || 0,
+        score: mvpApi.score || 0,
+        won: mvpApi.won,
+        character: mvpApi.character || null
       });
-    } catch (_) {}
-  } else {
-    console.log('[finalizarmix] Partida encontrada mas nenhum jogador foi cruzado com a API.');
-    try {
+
+      const attachment = new AttachmentBuilder(mvpImageBuf, { name: `mvp-${Date.now()}.png` });
+
+      const mentionText = discordMention
+        ? `👑 **PARABÉNS ${discordMention}! VOCÊ FOI O MVP DA PARTIDA PERSONALIZADA!** 👑\n`
+        : `👑 **PARABÉNS \`${mvpApi.name}#${mvpApi.tag}\`! VOCÊ FOI O MVP DA PARTIDA PERSONALIZADA!** 👑\n`;
+
       await channel.send({
-        content: `⚠️ **Partida encontrada na API, mas não foi possível cruzar os jogadores.**\nVerifique se os nomes vinculados com \`/vincular\` estão corretos (nome e tag exatos da conta Riot).`
+        content:
+          `${mentionText}` +
+          `🔥 Abates: **${mvpApi.kills} Kills**  •  📊 KDA: **${mvpApi.kills}/${mvpApi.deaths}/${mvpApi.assists}**  •  🎯 Score: **${mvpApi.score || 0} pts**\n` +
+          `*Estatísticas sincronizadas oficialmente da Riot Games da partida recém-finalizada.*`,
+        files: [attachment]
       });
-    } catch (_) {}
+    } catch (mvpErr) {
+      console.error('[finalizarmix] Erro ao renderizar ou enviar imagem do MVP:', mvpErr);
+      await channel.send({
+        content: `👑 **MVP DA PARTIDA:** ${discordMention || mvpApi.name} com **${mvpApi.kills} kills** e KDA **${mvpApi.kills}/${mvpApi.deaths}/${mvpApi.assists}**!`
+      }).catch(() => {});
+    }
   }
 }
+
 

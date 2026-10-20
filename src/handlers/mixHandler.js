@@ -35,34 +35,79 @@ function createLobbyEmbed(session, imageName = 'lobby.png') {
   return embed;
 }
 
-function createLobbyButtons(disabled = false) {
-  const row = new ActionRowBuilder().addComponents(
+function createLobbyButtons(session) {
+  const count = (session && session.players) ? session.players.length : 0;
+  const isFull = count >= 10;
+
+  if (isFull) {
+    // Quando a fila está cheia (10/10), os botões de sorteio aparecem diretamente no painel do MIX!
+    const row = new ActionRowBuilder().addComponents(
+      new ButtonBuilder()
+        .setCustomId('btn_draft_balanced')
+        .setLabel('Sortear com Balanceamento (MMR)')
+        .setStyle(ButtonStyle.Success)
+        .setEmoji('⚖️'),
+      new ButtonBuilder()
+        .setCustomId('btn_draft_random')
+        .setLabel('Sortear Aleatório')
+        .setStyle(ButtonStyle.Primary)
+        .setEmoji('🎲'),
+      new ButtonBuilder()
+        .setCustomId('btn_leave_mix')
+        .setLabel('Sair da Fila')
+        .setStyle(ButtonStyle.Secondary)
+        .setEmoji('🚪'),
+      new ButtonBuilder()
+        .setCustomId('btn_cancel_mix')
+        .setLabel('Cancelar MIX')
+        .setStyle(ButtonStyle.Danger)
+        .setEmoji('❌')
+    );
+    return [row];
+  }
+
+  // Fila em andamento
+  const row1 = new ActionRowBuilder().addComponents(
     new ButtonBuilder()
       .setCustomId('btn_join_mix')
       .setLabel('Entrar no MIX')
       .setStyle(ButtonStyle.Success)
-      .setEmoji('🎮')
-      .setDisabled(disabled),
+      .setEmoji('🎮'),
     new ButtonBuilder()
       .setCustomId('btn_leave_mix')
       .setLabel('Sair da Fila')
       .setStyle(ButtonStyle.Danger)
-      .setEmoji('🚪')
-      .setDisabled(disabled),
+      .setEmoji('🚪'),
     new ButtonBuilder()
-      .setCustomId('btn_my_rank')
-      .setLabel('Meu Elo')
+      .setCustomId('btn_top_melhores')
+      .setLabel('Top 5 Melhores Da xd')
       .setStyle(ButtonStyle.Secondary)
-      .setEmoji('🏅'),
+      .setEmoji('🏆'),
     new ButtonBuilder()
       .setCustomId('btn_cancel_mix')
       .setLabel('Cancelar')
       .setStyle(ButtonStyle.Secondary)
       .setEmoji('❌')
-      .setDisabled(disabled)
   );
 
-  return [row];
+  // Se tiver 2 ou mais jogadores, adiciona atalho para organizador sortear (útil para testes ou jogos com menos pessoas)
+  if (count >= 2) {
+    const row2 = new ActionRowBuilder().addComponents(
+      new ButtonBuilder()
+        .setCustomId('btn_draft_balanced')
+        .setLabel(`Sortear Times (${count} Jogadores)`)
+        .setStyle(ButtonStyle.Primary)
+        .setEmoji('⚖️'),
+      new ButtonBuilder()
+        .setCustomId('btn_draft_random')
+        .setLabel('Sortear Aleatório')
+        .setStyle(ButtonStyle.Secondary)
+        .setEmoji('🎲')
+    );
+    return [row1, row2];
+  }
+
+  return [row1];
 }
 
 async function startNewMix(interaction) {
@@ -101,7 +146,7 @@ async function startNewMix(interaction) {
     content: voiceNotice || null,
     embeds: [createLobbyEmbed(session, imageName)],
     files: [attachment],
-    components: createLobbyButtons(false)
+    components: createLobbyButtons(session)
   });
 
   session.messageId = reply.id;
@@ -234,19 +279,21 @@ async function handleButtonInteraction(interaction) {
     });
   }
 
-  // Verificar meu elo (funciona a qualquer momento)
-  if (customId === 'btn_my_rank') {
-    const userData = database.getUser(user.id);
-    if (!userData) {
+  // Top 5 Melhores Da xd (ou legado btn_my_rank)
+  if (customId === 'btn_top_melhores' || customId === 'btn_my_rank') {
+    const { getTop5Embed } = require('../services/leaderboardService');
+    const result = getTop5Embed();
+    if (result.embed) {
       return interaction.reply({
-        content: `ℹ️ Você ainda não vinculou sua conta! Digite \`/vincular nick#tag\` (ex: \`/vincular Aspas#LOUD\`) para puxar seu elo oficial do Valorant.`,
+        embeds: [result.embed],
+        ephemeral: true
+      });
+    } else {
+      return interaction.reply({
+        content: result.content,
         ephemeral: true
       });
     }
-    return interaction.reply({
-      content: `🏅 **Seu Perfil de Valorant:**\n• Conta: **${userData.riotName || user.username}#${userData.riotTag || 'BR1'}**\n• Elo Oficial: ${userData.badge || '⭐'} **${userData.rank}** (${userData.rankingInTier || 0} RR)\n• MMR Base: \`${userData.mmr} pts\``,
-      ephemeral: true
-    });
   }
 
   // Finalizar partida e puxar todos
@@ -361,7 +408,7 @@ async function handleButtonInteraction(interaction) {
       await interaction.update({
         embeds: [embed],
         files: [attachment],
-        components: createLobbyButtons(session.players.length >= 10)
+        components: createLobbyButtons(session)
       });
     } else {
       await interaction.deferUpdate().catch(() => {});
@@ -370,12 +417,12 @@ async function handleButtonInteraction(interaction) {
         await msg.edit({
           embeds: [embed],
           files: [attachment],
-          components: createLobbyButtons(session.players.length >= 10)
+          components: createLobbyButtons(session)
         });
       }
     }
 
-    // Se atingiu 10 jogadores, pede para o organizador com cargo mix escolher o sorteio!
+    // Se atingiu 10 jogadores, envia o aviso destacado com os botões de sorteio
     if (session.players.length === 10) {
       await promptDraftMode(interaction.channel, session);
     }
@@ -403,7 +450,7 @@ async function handleButtonInteraction(interaction) {
       await interaction.update({
         embeds: [embed],
         files: [attachment],
-        components: createLobbyButtons(false)
+        components: createLobbyButtons(session)
       });
     } else {
       await interaction.deferUpdate().catch(() => {});
@@ -412,7 +459,7 @@ async function handleButtonInteraction(interaction) {
         await msg.edit({
           embeds: [embed],
           files: [attachment],
-          components: createLobbyButtons(false)
+          components: createLobbyButtons(session)
         });
       }
     }
@@ -421,9 +468,17 @@ async function handleButtonInteraction(interaction) {
 
   // Escolha inicial: Sorteio Balanceado
   if (customId === 'btn_draft_balanced') {
-    if (!hasMixPermission(member)) {
+    const canManage = hasMixPermission(member) || session.creatorId === user.id;
+    if (!canManage) {
       return interaction.reply({
-        content: '❌ Apenas quem possui o cargo **mix** (ou Administrador) pode configurar e sortear os times!',
+        content: '❌ Apenas quem possui o cargo **mix** (ou Administrador, ou quem criou a fila) pode sortear os times!',
+        ephemeral: true
+      });
+    }
+
+    if (session.players.length < 2) {
+      return interaction.reply({
+        content: '⚠️ É necessário pelo menos 2 jogadores na fila para sortear os times!',
         ephemeral: true
       });
     }
@@ -432,6 +487,7 @@ async function handleButtonInteraction(interaction) {
     session.teams = teams;
 
     await interaction.update({
+      content: null,
       embeds: [createTeamsEmbed(teams)],
       components: createDraftControlButtons()
     });
@@ -440,9 +496,17 @@ async function handleButtonInteraction(interaction) {
 
   // Escolha inicial: Sorteio Aleatório
   if (customId === 'btn_draft_random') {
-    if (!hasMixPermission(member)) {
+    const canManage = hasMixPermission(member) || session.creatorId === user.id;
+    if (!canManage) {
       return interaction.reply({
-        content: '❌ Apenas quem possui o cargo **mix** (ou Administrador) pode configurar e sortear os times!',
+        content: '❌ Apenas quem possui o cargo **mix** (ou Administrador, ou quem criou a fila) pode sortear os times!',
+        ephemeral: true
+      });
+    }
+
+    if (session.players.length < 2) {
+      return interaction.reply({
+        content: '⚠️ É necessário pelo menos 2 jogadores na fila para sortear os times!',
         ephemeral: true
       });
     }
@@ -451,6 +515,7 @@ async function handleButtonInteraction(interaction) {
     session.teams = teams;
 
     await interaction.update({
+      content: null,
       embeds: [createTeamsEmbed(teams)],
       components: createDraftControlButtons()
     });
@@ -459,9 +524,10 @@ async function handleButtonInteraction(interaction) {
 
   // Re-sortear Balanceado
   if (customId === 'btn_reroll_balanced') {
-    if (!hasMixPermission(member)) {
+    const canManage = hasMixPermission(member) || session.creatorId === user.id;
+    if (!canManage) {
       return interaction.reply({
-        content: '❌ Apenas quem possui o cargo **mix** (ou Administrador) pode re-sortear os times!',
+        content: '❌ Apenas quem possui o cargo **mix** (ou Administrador, ou quem criou a fila) pode re-sortear os times!',
         ephemeral: true
       });
     }
@@ -470,6 +536,7 @@ async function handleButtonInteraction(interaction) {
     session.teams = teams;
 
     await interaction.update({
+      content: null,
       embeds: [createTeamsEmbed(teams)],
       components: createDraftControlButtons()
     });
@@ -478,9 +545,10 @@ async function handleButtonInteraction(interaction) {
 
   // Re-sortear Aleatório
   if (customId === 'btn_reroll_random') {
-    if (!hasMixPermission(member)) {
+    const canManage = hasMixPermission(member) || session.creatorId === user.id;
+    if (!canManage) {
       return interaction.reply({
-        content: '❌ Apenas quem possui o cargo **mix** (ou Administrador) pode re-sortear os times!',
+        content: '❌ Apenas quem possui o cargo **mix** (ou Administrador, ou quem criou a fila) pode re-sortear os times!',
         ephemeral: true
       });
     }
@@ -489,6 +557,7 @@ async function handleButtonInteraction(interaction) {
     session.teams = teams;
 
     await interaction.update({
+      content: null,
       embeds: [createTeamsEmbed(teams)],
       components: createDraftControlButtons()
     });
@@ -497,9 +566,17 @@ async function handleButtonInteraction(interaction) {
 
   // Confirmar Times e Iniciar Votação de Mapas
   if (customId === 'btn_confirm_teams') {
-    if (!hasMixPermission(member)) {
+    const canManage = hasMixPermission(member) || session.creatorId === user.id;
+    if (!canManage) {
       return interaction.reply({
-        content: '❌ Apenas quem possui o cargo **mix** (ou Administrador) pode confirmar os times e iniciar a votação de mapas!',
+        content: '❌ Apenas quem possui o cargo **mix** (ou Administrador, ou quem criou a fila) pode confirmar os times!',
+        ephemeral: true
+      });
+    }
+
+    if (!session.teams) {
+      return interaction.reply({
+        content: '⚠️ Nenhum time foi sorteado ainda!',
         ephemeral: true
       });
     }
@@ -522,5 +599,7 @@ async function handleButtonInteraction(interaction) {
 module.exports = {
   startNewMix,
   handleButtonInteraction,
-  activeMixes
+  activeMixes,
+  createTeamsEmbed,
+  createDraftControlButtons
 };

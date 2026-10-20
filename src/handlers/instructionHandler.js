@@ -41,10 +41,10 @@ function createInstructionButtons() {
       .setStyle(ButtonStyle.Success)
       .setEmoji('🎮'),
     new ButtonBuilder()
-      .setCustomId('btn_my_rank')
-      .setLabel('Meu Elo')
+      .setCustomId('btn_top_melhores')
+      .setLabel('Top 5 Melhores Da xd')
       .setStyle(ButtonStyle.Primary)
-      .setEmoji('🏅'),
+      .setEmoji('🏆'),
     new ButtonBuilder()
       .setCustomId('btn_info_help')
       .setLabel('Como Funciona?')

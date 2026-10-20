@@ -9,13 +9,26 @@ const { PermissionFlagsBits } = require('discord.js');
  */
 function hasMixPermission(member) {
   if (!member) return false;
+  // Dono do servidor
+  if (member.guild && member.guild.ownerId === member.id) {
+    return true;
+  }
+  // Permissões administrativas
   if (
     member.permissions.has(PermissionFlagsBits.Administrator) ||
-    member.permissions.has(PermissionFlagsBits.ManageGuild)
+    member.permissions.has(PermissionFlagsBits.ManageGuild) ||
+    member.permissions.has(PermissionFlagsBits.ManageChannels)
   ) {
     return true;
   }
-  return member.roles.cache.some(r => r.name.toLowerCase() === 'mix');
+  // Cargos que contenham 'mix' (ex: "mix", "MIX", "Mix Host", "Organizador Mix")
+  if (member.roles && member.roles.cache) {
+    return member.roles.cache.some(r => {
+      const name = r.name.toLowerCase();
+      return name === 'mix' || name.includes('mix') || name === 'organizador';
+    });
+  }
+  return false;
 }
 
 module.exports = {

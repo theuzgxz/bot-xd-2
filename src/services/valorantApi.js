@@ -244,13 +244,18 @@ async function fetchCustomMatchStats(name, tag, region = 'br', afterTimestamp = 
 
     return {
       matchId:   match.metadata?.match_id || null,
+      map:       match.metadata?.map || null,
       startedAt: match.metadata?.started_at || null,
       players: allPlayers.map(p => ({
-        name:  p.name,
-        tag:   p.tag,
-        team:  (p.team || '').toLowerCase(), // 'red' or 'blue'
-        kills: p.stats?.kills || 0,
-        won:   (p.team || '').toLowerCase() === 'red' ? redWon : blueWon
+        name:      p.name,
+        tag:       p.tag,
+        team:      (p.team || '').toLowerCase(), // 'red' or 'blue'
+        kills:     p.stats?.kills || 0,
+        deaths:    p.stats?.deaths || 0,
+        assists:   p.stats?.assists || 0,
+        score:     p.stats?.score || 0,
+        character: p.character || null,
+        won:       (p.team || '').toLowerCase() === 'red' ? redWon : blueWon
       }))
     };
   } catch (err) {
