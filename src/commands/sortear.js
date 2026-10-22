@@ -17,8 +17,8 @@ module.exports = {
         .setDescription('Formato do sorteio dos times')
         .setRequired(false)
         .addChoices(
-          { name: '⚖️ Balanceado por Elo/MMR (Recomendado)', value: 'balanced' },
-          { name: '🎲 Aleatório (Sem balanceamento)', value: 'random' }
+          { name: 'Balanceado por Elo/MMR (Recomendado)', value: 'balanced' },
+          { name: 'Aleatório (Sem balanceamento)', value: 'random' }
         )
     ),
 
@@ -27,7 +27,7 @@ module.exports = {
 
     if (!session) {
       return interaction.reply({
-        content: '❌ Não há nenhuma fila de MIX ativa neste servidor! Inicie uma com `/mix`.',
+        content: 'Não há nenhuma fila de MIX ativa neste servidor! Inicie uma com `/mix`.',
         ephemeral: true
       });
     }
@@ -35,14 +35,14 @@ module.exports = {
     const canManage = hasMixPermission(interaction.member) || session.creatorId === interaction.user.id;
     if (!canManage) {
       return interaction.reply({
-        content: '❌ Apenas quem possui o cargo **mix** (ou Administrador, ou quem iniciou o MIX) pode sortear os times!',
+        content: 'Apenas quem possui o cargo **mix** (ou Administrador, ou quem iniciou o MIX) pode sortear os times!',
         ephemeral: true
       });
     }
 
-    if (session.players.length < 2) {
+    if (session.players.length < 10) {
       return interaction.reply({
-        content: '⚠️ É necessário que pelo menos 2 jogadores estejam na fila para sortear os times!',
+        content: 'É necessário que 10 jogadores estejam na fila para sortear os times!',
         ephemeral: true
       });
     }
@@ -53,8 +53,6 @@ module.exports = {
       : balanceTeams(session.players);
 
     session.teams = teams;
-
-    const { createTeamsEmbed, createDraftControlButtons } = require('../handlers/mixHandler');
 
     await interaction.reply({
       embeds: [createTeamsEmbed(teams)],

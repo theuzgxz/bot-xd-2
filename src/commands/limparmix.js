@@ -1,4 +1,4 @@
-const { SlashCommandBuilder } = require('discord.js');
+const { SlashCommandBuilder, PermissionFlagsBits } = require('discord.js');
 const { sendInstructionMessage } = require('../handlers/instructionHandler');
 const { hasMixPermission } = require('../utils/permissions');
 
@@ -10,12 +10,39 @@ module.exports = {
   async execute(interaction) {
     if (!hasMixPermission(interaction.member)) {
       return interaction.reply({
-        content: '❌ Apenas quem possui o cargo **mix** (ou Administrador) pode limpar o chat do MIX!',
+        content: 'Apenas quem possui o cargo **mix** (ou Administrador) pode limpar o chat do MIX!',
         ephemeral: true
       });
     }
 
     const channel = interaction.channel;
+
+    // Verificar se o bot tem as permissões necessárias no canal antes de começar
+    const botMember = interaction.guild?.members?.me;
+    if (botMember) {
+      const channelPermissions = channel.permissionsFor(botMember);
+      const missingPerms = [];
+
+      if (!channelPermissions?.has(PermissionFlagsBits.ManageMessages)) {
+        missingPerms.push('**Gerenciar Mensagens** (`Manage Messages`)');
+      }
+      if (!channelPermissions?.has(PermissionFlagsBits.ReadMessageHistory)) {
+        missingPerms.push('**Ver Histórico de Mensagens** (`Read Message History`)');
+      }
+      if (!channelPermissions?.has(PermissionFlagsBits.SendMessages)) {
+        missingPerms.push('**Enviar Mensagens** (`Send Messages`)');
+      }
+      if (!channelPermissions?.has(PermissionFlagsBits.AttachFiles)) {
+        missingPerms.push('**Anexar Arquivos** (`Attach Files`)');
+      }
+
+      if (missingPerms.length > 0) {
+        return interaction.reply({
+          content: `**O bot não possui permissões suficientes neste canal!**\n\nFaltam as seguintes permissões para o cargo do bot:\n${missingPerms.map(p => `• ${p}`).join('\n')}\n\n**Como resolver no Discord:**\n1. Clique nas configurações do canal **#mix** (Editar Canal).\n2. Acesse a aba **Permissões**.\n3. Adicione o cargo do bot (ou o bot) e habilite as permissões listadas acima (especialmente **Gerenciar Mensagens**).`,
+          ephemeral: true
+        });
+      }
+    }
 
     await interaction.deferReply({ ephemeral: true });
 
@@ -46,12 +73,16 @@ module.exports = {
       await sendInstructionMessage(channel);
 
       await interaction.editReply({
-        content: `🧹 **Chat do MIX limpo com sucesso!**\nForam removidas **${deletedCount}** mensagens e o guia oficial do MIX foi restaurado no topo do canal!`
+        content: `**Chat do MIX limpo com sucesso!**\nForam removidas **${deletedCount}** mensagens e o guia oficial do MIX foi restaurado no topo do canal!`
       });
     } catch (error) {
       console.error('Erro ao limpar chat do mix:', error);
+      let errorHelp = '';
+      if (error.code === 50013 || error.message.includes('Missing Permissions')) {
+        errorHelp = '\n\n**Dica:** O bot precisa da permissão **Gerenciar Mensagens** nas configurações do canal ou do servidor para poder apagar mensagens de outros membros.';
+      }
       await interaction.editReply({
-        content: `⚠️ Ocorreu um erro ao limpar as mensagens do canal: ${error.message}`
+        content: `Ocorreu um erro ao limpar as mensagens do canal: ${error.message}${errorHelp}`
       });
     }
   }

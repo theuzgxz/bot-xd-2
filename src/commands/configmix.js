@@ -38,7 +38,7 @@ module.exports = {
   async execute(interaction) {
     if (!hasMixPermission(interaction.member)) {
       return interaction.reply({
-        content: '❌ Apenas quem possui o cargo **mix** (ou Administrador) pode configurar as chamadas do MIX!',
+        content: 'Apenas quem possui o cargo **mix** (ou Administrador) pode configurar as chamadas do MIX!',
         ephemeral: true
       });
     }
@@ -50,7 +50,7 @@ module.exports = {
     // Validação para garantir que não escolheram canais duplicados
     if (callTimeA.id === callTimeB.id) {
       return interaction.reply({
-        content: '❌ O canal do Time A e Time B não podem ser o mesmo!',
+        content: 'O canal do Time A e Time B não podem ser o mesmo!',
         ephemeral: true
       });
     }
@@ -63,14 +63,14 @@ module.exports = {
 
     const embed = new EmbedBuilder()
       .setColor(COLORS.SUCCESS)
-      .setTitle('⚙️ CANAIS DE VOZ DO MIX CONFIGURADOS!')
+      .setTitle('CANAIS DE VOZ DO MIX CONFIGURADOS')
       .setDescription('Os canais de voz para o balanceamento automático foram salvos com sucesso:')
       .addFields(
-        { name: '🛋️ Call de Espera (Geral)', value: `<#${callEspera.id}>`, inline: false },
-        { name: '🔵 Call Time A', value: `<#${callTimeA.id}>`, inline: true },
-        { name: '🟠 Call Time B', value: `<#${callTimeB.id}>`, inline: true }
+        { name: 'Call de Espera (Geral)', value: `<#${callEspera.id}>`, inline: false },
+        { name: 'Call Time A', value: `<#${callTimeA.id}>`, inline: true },
+        { name: 'Call Time B', value: `<#${callTimeB.id}>`, inline: true }
       )
-      .setFooter({ text: 'Agora, após a votação do mapa, os jogadores serão movidos automaticamente!' })
+      .setFooter({ text: 'Após a votação do mapa, os jogadores serão movidos automaticamente.' })
       .setTimestamp();
 
     await interaction.reply({ embeds: [embed] });

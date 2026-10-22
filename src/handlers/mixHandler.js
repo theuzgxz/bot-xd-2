@@ -22,11 +22,11 @@ function createLobbyEmbed(session, imageName = 'lobby.png') {
 
   const embed = new EmbedBuilder()
     .setColor(isFull ? COLORS.SUCCESS : 0x00E5FF)
-    .setTitle('🎮 VALORANT MIX - FILA COMPETITIVA (5v5)')
+    .setTitle('VALORANT MIX - FILA COMPETITIVA (5v5)')
     .setDescription(
       `Entre na fila para montar um MIX balanceado de Valorant!\n` +
       `Assim que **10 jogadores** entrarem, um organizador com o cargo **\`mix\`** escolherá o formato do sorteio dos times!\n\n` +
-      `📌 *Use \`/vincular nick#tag\` para sincronizar seu elo oficial Riot Games.*`
+      `*Use \`/vincular nick#tag\` para sincronizar seu elo oficial Riot Games.*`
     )
     .setImage(`attachment://${imageName}`)
     .setFooter({ text: 'discord.gg/xd • Mix criado por ' + session.creatorName })
@@ -40,72 +40,43 @@ function createLobbyButtons(session) {
   const isFull = count >= 10;
 
   if (isFull) {
-    // Quando a fila está cheia (10/10), os botões de sorteio aparecem diretamente no painel do MIX!
+    // Quando a fila está cheia (10/10), os botões de sorteio aparecem diretamente no painel do MIX
     const row = new ActionRowBuilder().addComponents(
       new ButtonBuilder()
         .setCustomId('btn_draft_balanced')
         .setLabel('Sortear com Balanceamento (MMR)')
-        .setStyle(ButtonStyle.Success)
-        .setEmoji('⚖️'),
+        .setStyle(ButtonStyle.Success),
       new ButtonBuilder()
         .setCustomId('btn_draft_random')
         .setLabel('Sortear Aleatório')
-        .setStyle(ButtonStyle.Primary)
-        .setEmoji('🎲'),
+        .setStyle(ButtonStyle.Primary),
       new ButtonBuilder()
         .setCustomId('btn_leave_mix')
         .setLabel('Sair da Fila')
-        .setStyle(ButtonStyle.Secondary)
-        .setEmoji('🚪'),
+        .setStyle(ButtonStyle.Secondary),
       new ButtonBuilder()
         .setCustomId('btn_cancel_mix')
         .setLabel('Cancelar MIX')
         .setStyle(ButtonStyle.Danger)
-        .setEmoji('❌')
     );
     return [row];
   }
 
-  // Fila em andamento
+  // Fila em andamento (< 10 jogadores)
   const row1 = new ActionRowBuilder().addComponents(
     new ButtonBuilder()
       .setCustomId('btn_join_mix')
       .setLabel('Entrar no MIX')
-      .setStyle(ButtonStyle.Success)
-      .setEmoji('🎮'),
+      .setStyle(ButtonStyle.Success),
     new ButtonBuilder()
       .setCustomId('btn_leave_mix')
       .setLabel('Sair da Fila')
-      .setStyle(ButtonStyle.Danger)
-      .setEmoji('🚪'),
-    new ButtonBuilder()
-      .setCustomId('btn_top_melhores')
-      .setLabel('Top 5 Melhores Da xd')
-      .setStyle(ButtonStyle.Secondary)
-      .setEmoji('🏆'),
+      .setStyle(ButtonStyle.Danger),
     new ButtonBuilder()
       .setCustomId('btn_cancel_mix')
       .setLabel('Cancelar')
       .setStyle(ButtonStyle.Secondary)
-      .setEmoji('❌')
   );
-
-  // Se tiver 2 ou mais jogadores, adiciona atalho para organizador sortear (útil para testes ou jogos com menos pessoas)
-  if (count >= 2) {
-    const row2 = new ActionRowBuilder().addComponents(
-      new ButtonBuilder()
-        .setCustomId('btn_draft_balanced')
-        .setLabel(`Sortear Times (${count} Jogadores)`)
-        .setStyle(ButtonStyle.Primary)
-        .setEmoji('⚖️'),
-      new ButtonBuilder()
-        .setCustomId('btn_draft_random')
-        .setLabel('Sortear Aleatório')
-        .setStyle(ButtonStyle.Secondary)
-        .setEmoji('🎲')
-    );
-    return [row1, row2];
-  }
 
   return [row1];
 }
@@ -115,7 +86,7 @@ async function startNewMix(interaction) {
 
   if (activeMixes.has(guildId)) {
     return interaction.reply({
-      content: '⚠️ Já existe uma sessão de MIX ativa neste servidor! Finalize-a ou cancele antes de abrir uma nova.',
+      content: 'Já existe uma sessão de MIX ativa neste servidor! Finalize-a ou cancele antes de abrir uma nova.',
       ephemeral: true
     });
   }
@@ -124,7 +95,7 @@ async function startNewMix(interaction) {
 
   const guildConfig = database.getGuildConfig(guildId);
   const voiceNotice = (!guildConfig.voiceTeamAId || !guildConfig.voiceTeamBId)
-    ? '⚠️ *Aviso: Os canais de voz ainda não foram configurados. Quem possui o cargo `mix` pode usar `/configmix` para habilitar a troca automática de chamadas.*\n'
+    ? '*Aviso: Os canais de voz ainda não foram configurados. Quem possui o cargo `mix` pode usar `/configmix` para habilitar a troca automática de chamadas.*\n'
     : '';
 
   const session = {
@@ -155,33 +126,33 @@ async function startNewMix(interaction) {
 
 function createTeamsEmbed(teams) {
   const team1List = teams.team1.players
-    .map((p, i) => `${i + 1}. <@${p.id}> ${p.badge} **${p.rankName}** *(MMR: ${p.mmr})*`)
+    .map((p, i) => `${i + 1}. <@${p.id}> **${p.rankName}** *(MMR: ${p.mmr})*`)
     .join('\n');
 
   const team2List = teams.team2.players
-    .map((p, i) => `${i + 1}. <@${p.id}> ${p.badge} **${p.rankName}** *(MMR: ${p.mmr})*`)
+    .map((p, i) => `${i + 1}. <@${p.id}> **${p.rankName}** *(MMR: ${p.mmr})*`)
     .join('\n');
 
   return new EmbedBuilder()
     .setColor(COLORS.PRIMARY)
-    .setTitle(`⚖️ TIMES SORTEADOS - ${teams.modeLabel.toUpperCase()}`)
+    .setTitle(`TIMES SORTEADOS - ${teams.modeLabel.toUpperCase()}`)
     .setDescription(
       teams.mode === 'balanced'
         ? `Os times foram equilibrados matematicamente pelo MMR da Riot Games!\n` +
-          `📊 **Diferença de MMR:** \`${teams.mmrDifference} pts\` *(Equilíbrio Máximo)*\n\n` +
-          `👑 *Aguardando confirmação de um membro com o cargo \`mix\`.*`
-        : `Os times foram sorteados de forma 100% aleatória sem considerar o elo!\n` +
-          `📊 **Diferença de MMR:** \`${teams.mmrDifference} pts\`\n\n` +
-          `👑 *Aguardando confirmação de um membro com o cargo \`mix\`.*`
+          `Diferença de MMR: \`${teams.mmrDifference} pts\` (Equilíbrio Máximo)\n\n` +
+          `Aguardando confirmação de um membro com o cargo \`mix\`.`
+        : `Os times foram sorteados de forma aleatória sem considerar o elo!\n` +
+          `Diferença de MMR: \`${teams.mmrDifference} pts\`\n\n` +
+          `Aguardando confirmação de um membro com o cargo \`mix\`.`
     )
     .addFields(
       {
-        name: `🔵 ${teams.team1.name} — ${teams.team1.side}`,
+        name: `${teams.team1.name} — ${teams.team1.side}`,
         value: `${team1List}\n**MMR Médio:** \`${teams.team1.avgMmr}\``,
         inline: true
       },
       {
-        name: `🟠 ${teams.team2.name} — ${teams.team2.side}`,
+        name: `${teams.team2.name} — ${teams.team2.side}`,
         value: `${team2List}\n**MMR Médio:** \`${teams.team2.avgMmr}\``,
         inline: true
       }
@@ -194,24 +165,20 @@ function createDraftControlButtons() {
   const row = new ActionRowBuilder().addComponents(
     new ButtonBuilder()
       .setCustomId('btn_confirm_teams')
-      .setLabel('Confirmar & Votar Mapa')
-      .setStyle(ButtonStyle.Success)
-      .setEmoji('✅'),
+      .setLabel('Confirmar e Votar Mapa')
+      .setStyle(ButtonStyle.Success),
     new ButtonBuilder()
       .setCustomId('btn_reroll_balanced')
       .setLabel('Sortear Novamente (Balanceado)')
-      .setStyle(ButtonStyle.Primary)
-      .setEmoji('🔄'),
+      .setStyle(ButtonStyle.Primary),
     new ButtonBuilder()
       .setCustomId('btn_reroll_random')
       .setLabel('Sortear Novamente (Aleatório)')
-      .setStyle(ButtonStyle.Secondary)
-      .setEmoji('🎲'),
+      .setStyle(ButtonStyle.Secondary),
     new ButtonBuilder()
       .setCustomId('btn_cancel_mix')
       .setLabel('Cancelar MIX')
       .setStyle(ButtonStyle.Danger)
-      .setEmoji('❌')
   );
 
   return [row];
@@ -220,12 +187,12 @@ function createDraftControlButtons() {
 async function promptDraftMode(channel, session) {
   const embed = new EmbedBuilder()
     .setColor(COLORS.WARNING)
-    .setTitle('🎮 FILA CHEIA (10/10) - ESCOLHA O FORMATO DO SORTEIO')
+    .setTitle('FILA CHEIA (10/10) - ESCOLHA O FORMATO DO SORTEIO')
     .setDescription(
       `Os **10 jogadores** confirmaram presença na fila!\n\n` +
-      `👑 **Apenas quem possui o cargo \`mix\` (ou Administrador)** pode escolher o formato do sorteio abaixo:\n\n` +
-      `• ⚖️ **Sortear com Balanceamento:** O bot analisa o elo e MMR de cada jogador da Riot para montar os times mais justos possíveis.\n` +
-      `• 🎲 **Sortear Aleatório:** O bot mistura os 10 jogadores aleatoriamente sem considerar o elo.`
+      `**Apenas quem possui o cargo \`mix\` (ou Administrador)** pode escolher o formato do sorteio abaixo:\n\n` +
+      `• **Sortear com Balanceamento:** O bot analisa o elo e MMR de cada jogador da Riot para montar os times mais justos possíveis.\n` +
+      `• **Sortear Aleatório:** O bot mistura os 10 jogadores aleatoriamente sem considerar o elo.`
     )
     .setFooter({ text: 'Selecione uma opção abaixo para sortear os times.' });
 
@@ -233,18 +200,15 @@ async function promptDraftMode(channel, session) {
     new ButtonBuilder()
       .setCustomId('btn_draft_balanced')
       .setLabel('Sortear com Balanceamento (MMR)')
-      .setStyle(ButtonStyle.Success)
-      .setEmoji('⚖️'),
+      .setStyle(ButtonStyle.Success),
     new ButtonBuilder()
       .setCustomId('btn_draft_random')
       .setLabel('Sortear Aleatório (Sem Balancear)')
-      .setStyle(ButtonStyle.Primary)
-      .setEmoji('🎲'),
+      .setStyle(ButtonStyle.Primary),
     new ButtonBuilder()
       .setCustomId('btn_cancel_mix')
       .setLabel('Cancelar MIX')
       .setStyle(ButtonStyle.Danger)
-      .setEmoji('❌')
   );
 
   const draftMsg = await channel.send({
@@ -268,7 +232,7 @@ async function handleButtonInteraction(interaction) {
   if (customId === 'btn_info_help') {
     return interaction.reply({
       content:
-        `📖 **Como Funciona o Valorant MIX:**\n\n` +
+        `**Como Funciona o Valorant MIX:**\n\n` +
         `1. Um jogador inicia a fila com \`/mix\` ou no botão verde.\n` +
         `2. 10 jogadores entram na fila (todos com conta vinculada via \`/vincular\`).\n` +
         `3. Quem possui o cargo **\`mix\`** escolhe sortear com ou sem balanceamento.\n` +
@@ -306,7 +270,7 @@ async function handleButtonInteraction(interaction) {
   const session = activeMixes.get(guildId);
   if (!session) {
     return interaction.reply({
-      content: '❌ Não há nenhuma fila de MIX ativa no momento.',
+      content: 'Não há nenhuma fila de MIX ativa no momento.',
       ephemeral: true
     });
   }
@@ -316,7 +280,7 @@ async function handleButtonInteraction(interaction) {
     const isMixHost = hasMixPermission(member);
     if (session.creatorId !== user.id && !isMixHost) {
       return interaction.reply({
-        content: '❌ Apenas quem possui o cargo **mix** (ou quem iniciou o MIX) pode cancelá-lo.',
+        content: 'Apenas quem possui o cargo **mix** (ou quem iniciou o MIX) pode cancelá-lo.',
         ephemeral: true
       });
     }
@@ -330,7 +294,7 @@ async function handleButtonInteraction(interaction) {
         const msg = await interaction.channel.messages.fetch(session.messageId).catch(() => null);
         if (msg) {
           await msg.edit({
-            content: '❌ **Este MIX foi cancelado.**',
+            content: '**Este MIX foi cancelado.**',
             components: []
           });
         }
@@ -344,7 +308,7 @@ async function handleButtonInteraction(interaction) {
     } catch (e) {}
 
     return interaction.editReply({
-      content: `🛑 O MIX foi cancelado por <@${user.id}>.`
+      content: `O MIX foi cancelado por <@${user.id}>.`
     });
   }
 
@@ -352,14 +316,14 @@ async function handleButtonInteraction(interaction) {
   if (customId === 'btn_join_mix') {
     if (session.players.some(p => p.id === user.id)) {
       return interaction.reply({
-        content: '⚠️ Você já está na fila deste MIX!',
+        content: 'Você já está na fila deste MIX!',
         ephemeral: true
       });
     }
 
     if (session.players.length >= 10) {
       return interaction.reply({
-        content: '⚠️ A fila já atingiu o limite de 10 jogadores!',
+        content: 'A fila já atingiu o limite de 10 jogadores!',
         ephemeral: true
       });
     }
@@ -369,9 +333,9 @@ async function handleButtonInteraction(interaction) {
     if (!dbUser || !dbUser.rank) {
       return interaction.reply({
         content:
-          `⚠️ **Você precisa vincular sua conta Riot antes de entrar na fila!**\n\n` +
+          `**Você precisa vincular sua conta Riot antes de entrar na fila!**\n\n` +
           `Para que os times fiquem 100% equilibrados e justos, o bot precisa analisar seu elo oficial do Valorant.\n` +
-          `👉 Digite no chat: \`/vincular nick#tag\` (Ex: \`/vincular Aspas#BR1\`)`,
+          `Digite no chat: \`/vincular nick#tag\` (Ex: \`/vincular Aspas#BR1\`)`,
         ephemeral: true
       });
     }
@@ -434,7 +398,7 @@ async function handleButtonInteraction(interaction) {
     const index = session.players.findIndex(p => p.id === user.id);
     if (index === -1) {
       return interaction.reply({
-        content: '⚠️ Você não está na fila.',
+        content: 'Você não está na fila.',
         ephemeral: true
       });
     }
@@ -471,14 +435,14 @@ async function handleButtonInteraction(interaction) {
     const canManage = hasMixPermission(member) || session.creatorId === user.id;
     if (!canManage) {
       return interaction.reply({
-        content: '❌ Apenas quem possui o cargo **mix** (ou Administrador, ou quem criou a fila) pode sortear os times!',
+        content: 'Apenas quem possui o cargo **mix** (ou Administrador, ou quem criou a fila) pode sortear os times!',
         ephemeral: true
       });
     }
 
-    if (session.players.length < 2) {
+    if (session.players.length < 10) {
       return interaction.reply({
-        content: '⚠️ É necessário pelo menos 2 jogadores na fila para sortear os times!',
+        content: 'É necessário que 10 jogadores estejam na fila para sortear os times!',
         ephemeral: true
       });
     }
@@ -499,14 +463,14 @@ async function handleButtonInteraction(interaction) {
     const canManage = hasMixPermission(member) || session.creatorId === user.id;
     if (!canManage) {
       return interaction.reply({
-        content: '❌ Apenas quem possui o cargo **mix** (ou Administrador, ou quem criou a fila) pode sortear os times!',
+        content: 'Apenas quem possui o cargo **mix** (ou Administrador, ou quem criou a fila) pode sortear os times!',
         ephemeral: true
       });
     }
 
-    if (session.players.length < 2) {
+    if (session.players.length < 10) {
       return interaction.reply({
-        content: '⚠️ É necessário pelo menos 2 jogadores na fila para sortear os times!',
+        content: 'É necessário que 10 jogadores estejam na fila para sortear os times!',
         ephemeral: true
       });
     }
@@ -527,7 +491,7 @@ async function handleButtonInteraction(interaction) {
     const canManage = hasMixPermission(member) || session.creatorId === user.id;
     if (!canManage) {
       return interaction.reply({
-        content: '❌ Apenas quem possui o cargo **mix** (ou Administrador, ou quem criou a fila) pode re-sortear os times!',
+        content: 'Apenas quem possui o cargo **mix** (ou Administrador, ou quem criou a fila) pode re-sortear os times!',
         ephemeral: true
       });
     }
@@ -548,7 +512,7 @@ async function handleButtonInteraction(interaction) {
     const canManage = hasMixPermission(member) || session.creatorId === user.id;
     if (!canManage) {
       return interaction.reply({
-        content: '❌ Apenas quem possui o cargo **mix** (ou Administrador, ou quem criou a fila) pode re-sortear os times!',
+        content: 'Apenas quem possui o cargo **mix** (ou Administrador, ou quem criou a fila) pode re-sortear os times!',
         ephemeral: true
       });
     }
@@ -569,21 +533,21 @@ async function handleButtonInteraction(interaction) {
     const canManage = hasMixPermission(member) || session.creatorId === user.id;
     if (!canManage) {
       return interaction.reply({
-        content: '❌ Apenas quem possui o cargo **mix** (ou Administrador, ou quem criou a fila) pode confirmar os times!',
+        content: 'Apenas quem possui o cargo **mix** (ou Administrador, ou quem criou a fila) pode confirmar os times!',
         ephemeral: true
       });
     }
 
     if (!session.teams) {
       return interaction.reply({
-        content: '⚠️ Nenhum time foi sorteado ainda!',
+        content: 'Nenhum time foi sorteado ainda!',
         ephemeral: true
       });
     }
 
     // Trava os botões de sorteio
     await interaction.update({
-      content: `✅ **Times confirmados por <@${user.id}>! Iniciando votação de mapas...**`,
+      content: `**Times confirmados por <@${user.id}>! Iniciando votação de mapas...**`,
       components: []
     });
 

@@ -11,9 +11,9 @@ const http = require('http');
 const PORT = process.env.PORT || 3000;
 http.createServer((req, res) => {
   res.writeHead(200, { 'Content-Type': 'text/plain' });
-  res.end('🤖 mix xd Bot está online e funcionando!\n');
+  res.end('mix xd Bot esta online e funcionando!\n');
 }).listen(PORT, () => {
-  console.log(`🌐 Servidor keep-alive rodando na porta ${PORT}`);
+  console.log(`Servidor keep-alive rodando na porta ${PORT}`);
 });
 
 const {
@@ -61,14 +61,14 @@ async function registerSlashCommands() {
   const guildId = process.env.GUILD_ID;
 
   if (!token || !clientId) {
-    console.warn('⚠️ DISCORD_TOKEN ou CLIENT_ID não configurados no arquivo .env!');
+    console.warn('[AVISO] DISCORD_TOKEN ou CLIENT_ID não configurados no arquivo .env!');
     return;
   }
 
   const rest = new REST({ version: '10' }).setToken(token);
 
   try {
-    console.log(`🔄 Iniciando registro de ${commands.length} comandos de barra (/)...`);
+    console.log(`Iniciando registro de ${commands.length} comandos de barra (/)...`);
 
     if (guildId) {
       try {
@@ -76,13 +76,13 @@ async function registerSlashCommands() {
           Routes.applicationGuildCommands(clientId, guildId),
           { body: commands }
         );
-        console.log(`✅ Comandos registrados com sucesso no servidor (${guildId})!`);
+        console.log(`Comandos registrados com sucesso no servidor (${guildId})!`);
         return;
       } catch (guildErr) {
         if (guildErr.code === 50001) {
-          console.warn(`⚠️ O bot ainda não está no servidor ID ${guildId} ou falta a permissão applications.commands.`);
-          console.log(`🔗 Adicione o bot ao servidor usando o link abaixo:`);
-          console.log(`👉 https://discord.com/oauth2/authorize?client_id=${clientId}&permissions=20048896&scope=bot%20applications.commands\n`);
+          console.warn(`[AVISO] O bot ainda não está no servidor ID ${guildId} ou falta a permissão applications.commands.`);
+          console.log(`Adicione o bot ao servidor usando o link abaixo:`);
+          console.log(`https://discord.com/oauth2/authorize?client_id=${clientId}&permissions=20048896&scope=bot%20applications.commands\n`);
         } else {
           console.error('Erro no registro do servidor:', guildErr.message);
         }
@@ -94,20 +94,20 @@ async function registerSlashCommands() {
       Routes.applicationCommands(clientId),
       { body: commands }
     );
-    console.log('✅ Comandos registrados globalmente com sucesso!');
+    console.log('Comandos registrados globalmente com sucesso!');
   } catch (error) {
-    console.error('❌ Erro ao registrar comandos globais:', error);
+    console.error('Erro ao registrar comandos globais:', error);
   }
 }
 
 client.once(Events.ClientReady, async () => {
   console.log(`===============================================`);
-  console.log(`🤖 Bot Valorant MIX online como: ${client.user.tag}`);
-  console.log(`🎯 Servidores conectados: ${client.guilds.cache.size}`);
+  console.log(`Bot Valorant MIX online como: ${client.user.tag}`);
+  console.log(`Servidores conectados: ${client.guilds.cache.size}`);
   if (client.guilds.cache.size === 0) {
-    console.log(`\n⚠️ O bot ainda não foi adicionado a nenhum servidor!`);
-    console.log(`🔗 Use este link para adicioná-lo:`);
-    console.log(`👉 https://discord.com/oauth2/authorize?client_id=${process.env.CLIENT_ID}&permissions=20048896&scope=bot%20applications.commands\n`);
+    console.log(`\n[AVISO] O bot ainda não foi adicionado a nenhum servidor!`);
+    console.log(`Use este link para adicioná-lo:`);
+    console.log(`https://discord.com/oauth2/authorize?client_id=${process.env.CLIENT_ID}&permissions=20048896&scope=bot%20applications.commands\n`);
   }
   console.log(`===============================================`);
 
@@ -128,7 +128,7 @@ client.on(Events.InteractionCreate, async interaction => {
       const command = client.commands.get(interaction.commandName);
       if (!command) {
         if (!interaction.replied && !interaction.deferred) {
-          await interaction.reply({ content: '❌ Comando não encontrado.', ephemeral: true }).catch(() => {});
+          await interaction.reply({ content: 'Comando não encontrado.', ephemeral: true }).catch(() => {});
         }
         return;
       }
@@ -141,7 +141,7 @@ client.on(Events.InteractionCreate, async interaction => {
       setTimeout(async () => {
         if (!interaction.replied && !interaction.deferred) {
           await interaction.reply({
-            content: '⚠️ Esta votação já expirou ou foi encerrada.',
+            content: 'Esta votação já expirou ou foi encerrada.',
             ephemeral: true
           }).catch(() => {});
         }
@@ -152,12 +152,12 @@ client.on(Events.InteractionCreate, async interaction => {
     try {
       if (interaction.replied || interaction.deferred) {
         await interaction.followUp({
-          content: '❌ Ocorreu um erro ao executar esta ação.',
+          content: 'Ocorreu um erro ao executar esta ação.',
           ephemeral: true
         }).catch(() => {});
       } else {
         await interaction.reply({
-          content: '❌ Ocorreu um erro ao executar esta ação.',
+          content: 'Ocorreu um erro ao executar esta ação.',
           ephemeral: true
         }).catch(() => {});
       }
@@ -178,7 +178,7 @@ process.on('uncaughtException', error => {
 const token = process.env.DISCORD_TOKEN;
 if (!token || token.includes('SEU_') || token === 'SEU_DISCORD_BOT_TOKEN_AQUI') {
   console.log('\n-----------------------------------------------------------');
-  console.log('⚠️ AVISO: Configure o DISCORD_TOKEN no seu arquivo .env');
+  console.log('AVISO: Configure o DISCORD_TOKEN no seu arquivo .env');
   console.log('   Abra o arquivo .env e cole o Token do seu Bot do Discord.');
   console.log('-----------------------------------------------------------\n');
 } else {

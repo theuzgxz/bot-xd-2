@@ -441,13 +441,13 @@ async function renderMapVoteImage(maps, votes, playerMap, timeLeft) {
   ctx.fillStyle = '#FFFFFF';
   ctx.shadowColor = 'rgba(0, 229, 255, 0.7)';
   ctx.shadowBlur = 12;
-  ctx.fillText('🗺️  VOTAÇÃO DE MAPA  —  VALORANT MIX', width / 2, 40);
+  ctx.fillText('VOTAÇÃO DE MAPA — VALORANT MIX', width / 2, 40);
   ctx.shadowBlur = 0;
 
   const totalVoted = Object.keys(votes).length;
   ctx.font = 'bold 14px "SegoeUI", "Arial", sans-serif';
   ctx.fillStyle = '#00E5FF';
-  ctx.fillText(`⏳ ${timeLeft}s restantes   •   📊 ${totalVoted}/10 votos computados`, width / 2, 70);
+  ctx.fillText(`${timeLeft}s restantes   •   ${totalVoted}/10 votos computados`, width / 2, 70);
 
   // Contagem de votos por mapa
   const countMap = {};
@@ -640,40 +640,34 @@ async function renderTeamsImage(team1, team2, winningMap) {
   // Carregar imagem do mapa vencedor
   const mapImg = await getMapImage(winningMap.id, winningMap.image);
 
-  // 1. Fundo com a foto do mapa com blur e overlay cinematográfico escuro
-  if (mapImg) {
-    ctx.save();
-    ctx.drawImage(mapImg, 0, 0, W, H);
-    // Overlay gradiente escuro profissional
-    const bgOverlay = ctx.createLinearGradient(0, 0, 0, H);
-    bgOverlay.addColorStop(0, 'rgba(4, 7, 14, 0.82)');
-    bgOverlay.addColorStop(0.5, 'rgba(6, 10, 20, 0.88)');
-    bgOverlay.addColorStop(1, 'rgba(3, 5, 10, 0.94)');
-    ctx.fillStyle = bgOverlay;
-    ctx.fillRect(0, 0, W, H);
-    ctx.restore();
-  } else {
-    const bg = ctx.createLinearGradient(0, 0, W, H);
-    bg.addColorStop(0, '#04060A');
-    bg.addColorStop(0.5, '#070C18');
-    bg.addColorStop(1, '#030508');
-    ctx.fillStyle = bg;
-    ctx.fillRect(0, 0, W, H);
-  }
+  // 1. Fundo Gradiente Preto / Azul Escuro (idêntico ao lobby e votação)
+  const bgGrad = ctx.createLinearGradient(0, 0, W, H);
+  bgGrad.addColorStop(0, '#04060A');
+  bgGrad.addColorStop(0.5, '#070C16');
+  bgGrad.addColorStop(1, '#030508');
+  ctx.fillStyle = bgGrad;
+  ctx.fillRect(0, 0, W, H);
 
-  // Linhas cibernéticas de fundo sutis
+  // Linhas cibernéticas sutis de fundo
   ctx.save();
-  ctx.strokeStyle = 'rgba(0, 229, 255, 0.03)';
+  ctx.strokeStyle = 'rgba(0, 229, 255, 0.035)';
   ctx.lineWidth = 1;
-  for (let i = -100; i < W + 200; i += 80) {
+  for (let i = -100; i < W + 200; i += 70) {
     ctx.beginPath();
     ctx.moveTo(i, 0);
-    ctx.lineTo(i + 180, H);
+    ctx.lineTo(i + 150, H);
     ctx.stroke();
   }
   ctx.restore();
 
-  // Faixas zebradas superior e inferior
+  // Glow radial no topo atrás do cabeçalho
+  const glow = ctx.createRadialGradient(W / 2, 55, 20, W / 2, 55, 360);
+  glow.addColorStop(0, 'rgba(0, 229, 255, 0.14)');
+  glow.addColorStop(1, 'rgba(0, 0, 0, 0)');
+  ctx.fillStyle = glow;
+  ctx.fillRect(0, 0, W, 140);
+
+  // Faixas zebradas superior e inferior (Hazard Tape)
   const stripeH = 18;
   drawHazardStripes(ctx, 0, 0, W, stripeH, 18, '#00E5FF', '#070A10');
   ctx.fillStyle = '#00F0FF';
@@ -688,69 +682,85 @@ async function renderTeamsImage(team1, team2, winningMap) {
   ctx.textBaseline = 'middle';
   ctx.font = 'bold 24px "SegoeUIBold", "Arial", sans-serif';
   ctx.fillStyle = '#FFFFFF';
-  ctx.shadowColor = 'rgba(0, 229, 255, 0.8)';
-  ctx.shadowBlur = 12;
-  ctx.fillText('⚔️  VALORANT MIX  —  PARTIDA INICIADA', W / 2, 44);
+  ctx.shadowColor = 'rgba(0, 229, 255, 0.7)';
+  ctx.shadowBlur = 10;
+  ctx.fillText('VALORANT MIX — PARTIDA INICIADA', W / 2, 44);
   ctx.shadowBlur = 0;
 
   ctx.font = 'bold 13px "SegoeUI", "Arial", sans-serif';
   ctx.fillStyle = '#00E5FF';
-  ctx.fillText('MODO COMPETITIVO (5v5)  •  EQUILIBRADO POR MMR', W / 2, 70);
+  ctx.fillText('5v5 COMPETITIVO • MMR BALANCEADO', W / 2, 70);
   ctx.restore();
 
   // Dimensões do layout das 3 colunas:
-  // Esquerda: Time B (415px) | Centro: Mapa (380px) | Direita: Time A (415px)
-  const padSide = 25;
+  // Esquerda: Time A (Atacante) | Centro: Mapa | Direita: Time B (Defesa)
+  const padSide = 30;
   const colY = 96;
-  const teamColW = 410;
-  const mapColW = 360;
+  const teamColW = 415;
+  const mapColW = 340;
 
-  const leftTeamX = padSide;                                     // 25..435
-  const centerMapX = (W - mapColW) / 2;                          // 450..810
-  const rightTeamX = W - padSide - teamColW;                     // 825..1235
+  const leftTeamX = padSide;                                     // Time A: 30..445
+  const centerMapX = (W - mapColW) / 2;                          // Mapa: 460..800
+  const rightTeamX = W - padSide - teamColW;                     // Time B: 815..1230
 
   // Helper para desenhar a coluna de um time
   async function drawTeamColumn(team, startX, colW, isTeamA) {
-    const teamColor = isTeamA ? '#00E5FF' : '#FF6B00';
-    const accentGradStart = isTeamA ? 'rgba(0, 160, 255, 0.40)' : 'rgba(255, 80, 0, 0.40)';
-    const accentGradEnd = isTeamA ? 'rgba(0, 60, 140, 0.15)' : 'rgba(160, 40, 0, 0.15)';
-    const teamTitle = isTeamA ? '🔵 TIME A' : '🟠 TIME B';
+    const teamColor = isTeamA ? '#00E5FF' : '#FF4655';
+    const accentBgStart = isTeamA ? '#0E1626' : '#1A1014';
+    const accentBgEnd = isTeamA ? '#090E1A' : '#120A0E';
+    const teamTitle = isTeamA ? 'TIME A' : 'TIME B';
+    const teamSideLabel = isTeamA ? 'ATACANTE' : 'DEFESA';
 
     // 1. Cabeçalho do Time
-    const headerH = 54;
+    const headerH = 52;
     ctx.save();
     ctx.beginPath();
-    ctx.roundRect(startX, colY, colW, headerH, 8);
+    ctx.roundRect(startX, colY, colW, headerH, 6);
     const hGrad = ctx.createLinearGradient(startX, colY, startX + colW, colY);
-    hGrad.addColorStop(0, accentGradStart);
-    hGrad.addColorStop(1, accentGradEnd);
+    hGrad.addColorStop(0, accentBgStart);
+    hGrad.addColorStop(1, accentBgEnd);
     ctx.fillStyle = hGrad;
     ctx.fill();
 
-    ctx.strokeStyle = teamColor;
-    ctx.lineWidth = 1.5;
+    ctx.strokeStyle = isTeamA ? 'rgba(0, 229, 255, 0.4)' : 'rgba(255, 70, 85, 0.4)';
+    ctx.lineWidth = 1;
     ctx.stroke();
 
-    // Título do Time
-    ctx.textAlign = 'center';
-    ctx.textBaseline = 'middle';
-    ctx.font = 'bold 18px "SegoeUIBold", "Arial", sans-serif';
+    // Indicador vertical no canto esquerdo do cabeçalho
+    ctx.beginPath();
+    ctx.roundRect(startX, colY, 5, headerH, [6, 0, 0, 6]);
     ctx.fillStyle = teamColor;
     ctx.shadowColor = teamColor;
-    ctx.shadowBlur = 10;
-    ctx.fillText(teamTitle, startX + colW / 2, colY + 18);
+    ctx.shadowBlur = 8;
+    ctx.fill();
     ctx.shadowBlur = 0;
 
-    // Subtítulo do Time (Lado + MMR Médio)
-    const sideClean = (team.side || '').replace(/[⚔️🛡️]/g, '').trim().toUpperCase();
-    ctx.font = 'bold 11px "SegoeUI", "Arial", sans-serif';
-    ctx.fillStyle = '#CBD5E1';
-    ctx.fillText(`${sideClean || 'COMPETITIVO'}  •  MMR MÉDIO: ${team.avgMmr || 1000}`, startX + colW / 2, colY + 38);
+    // Título do Time
+    ctx.textAlign = 'left';
+    ctx.textBaseline = 'middle';
+    ctx.font = 'bold 18px "SegoeUIBold", "Arial", sans-serif';
+    ctx.fillStyle = '#FFFFFF';
+    ctx.shadowColor = 'rgba(0, 0, 0, 0.8)';
+    ctx.shadowBlur = 4;
+    ctx.fillText(teamTitle, startX + 20, colY + 20);
+    ctx.shadowBlur = 0;
+
+    // Badge lateral do Lado (ATACANTE / DEFESA)
+    ctx.textAlign = 'right';
+    ctx.font = 'bold 12px "SegoeUIBold", "Arial", sans-serif';
+    ctx.fillStyle = teamColor;
+    ctx.fillText(teamSideLabel, startX + colW - 16, colY + 20);
+
+    // Subtítulo: MMR Médio
+    ctx.textAlign = 'left';
+    ctx.font = '11px "SegoeUI", "Arial", sans-serif';
+    ctx.fillStyle = '#94A3B8';
+    ctx.fillText(`MMR MÉDIO: ${team.avgMmr || 1000}`, startX + 20, colY + 38);
     ctx.restore();
 
     // 2. Lista de Jogadores (5 cards)
-    const playerStartY = colY + headerH + 10;
-    const playerCardH = 74;
+    const playerStartY = colY + headerH + 8;
+    const playerCardH = 75;
     const cardGap = 8;
 
     for (let i = 0; i < team.players.length; i++) {
@@ -762,13 +772,13 @@ async function renderTeamsImage(team1, team2, winningMap) {
       ctx.beginPath();
       ctx.roundRect(startX, cardY, colW, playerCardH, 6);
       const cGrad = ctx.createLinearGradient(startX, cardY, startX + colW, cardY);
-      cGrad.addColorStop(0, 'rgba(15, 23, 42, 0.75)');
-      cGrad.addColorStop(1, 'rgba(8, 12, 22, 0.75)');
+      cGrad.addColorStop(0, isTeamA ? '#0E1626' : '#160E12');
+      cGrad.addColorStop(1, isTeamA ? '#080D18' : '#0D080B');
       ctx.fillStyle = cGrad;
       ctx.fill();
 
-      // Borda do card
-      ctx.strokeStyle = isTeamA ? 'rgba(0, 229, 255, 0.25)' : 'rgba(255, 107, 0, 0.25)';
+      // Borda sutil
+      ctx.strokeStyle = isTeamA ? 'rgba(0, 229, 255, 0.22)' : 'rgba(255, 70, 85, 0.22)';
       ctx.lineWidth = 1;
       ctx.stroke();
 
@@ -779,8 +789,8 @@ async function renderTeamsImage(team1, team2, winningMap) {
       ctx.fill();
 
       // Avatar circular
-      const AVT = 48;
-      const avX = startX + 14;
+      const AVT = 44;
+      const avX = startX + 16;
       const avY = cardY + (playerCardH - AVT) / 2;
 
       ctx.save();
@@ -798,12 +808,12 @@ async function renderTeamsImage(team1, team2, winningMap) {
       }
       if (!drawn) {
         const ag = ctx.createLinearGradient(avX, avY, avX + AVT, avY + AVT);
-        ag.addColorStop(0, isTeamA ? '#0284C7' : '#C2410C');
-        ag.addColorStop(1, isTeamA ? '#0369A1' : '#9A3412');
+        ag.addColorStop(0, isTeamA ? '#00D2FF' : '#FF4655');
+        ag.addColorStop(1, isTeamA ? '#0055FF' : '#A31525');
         ctx.fillStyle = ag;
         ctx.fillRect(avX, avY, AVT, AVT);
         ctx.fillStyle = '#FFF';
-        ctx.font = 'bold 20px sans-serif';
+        ctx.font = 'bold 18px "SegoeUIBold", sans-serif';
         ctx.textAlign = 'center';
         ctx.textBaseline = 'middle';
         ctx.fillText((p.displayName || 'P')[0].toUpperCase(), avX + AVT / 2, avY + AVT / 2);
@@ -815,13 +825,13 @@ async function renderTeamsImage(team1, team2, winningMap) {
       ctx.beginPath();
       ctx.arc(avX + AVT / 2, avY + AVT / 2, AVT / 2, 0, Math.PI * 2);
       ctx.strokeStyle = teamColor;
-      ctx.lineWidth = 2;
+      ctx.lineWidth = 1.5;
       ctx.stroke();
       ctx.restore();
 
       // Textos do Jogador
-      const textX = avX + AVT + 12;
-      const maxTextW = colW - (AVT + 30);
+      const textX = avX + AVT + 14;
+      const maxTextW = colW - (AVT + 36);
 
       // Nome do Jogador
       ctx.save();
@@ -837,63 +847,75 @@ async function renderTeamsImage(team1, team2, winningMap) {
         name = name.slice(0, -1);
       }
       if (name !== (p.riotName || p.displayName || p.username || 'Jogador')) name += '…';
-      ctx.fillText(name, textX, cardY + 30);
+      ctx.fillText(name, textX, cardY + 32);
 
-      // Elo / Ranque
+      // Elo / Ranque em texto limpo com diamante vetorial (sem emoji)
       const rankColor = getRankColor(p.rankName || '');
-      ctx.font = 'bold 12px "SegoeUIBold", "Arial", sans-serif';
+      const rankClean = (p.rankName || 'Sem Ranque').toUpperCase();
+      const dX = textX + 4;
+      const dY = cardY + 52;
+      const dSize = 4;
+
+      // Diamante vetorial limpo
+      ctx.fillStyle = rankColor;
+      ctx.beginPath();
+      ctx.moveTo(dX, dY - dSize);
+      ctx.lineTo(dX + dSize, dY);
+      ctx.lineTo(dX, dY + dSize);
+      ctx.lineTo(dX - dSize, dY);
+      ctx.closePath();
+      ctx.fill();
+
+      // Texto do rank
+      ctx.font = 'bold 11px "SegoeUIBold", "Arial", sans-serif';
       ctx.fillStyle = rankColor;
       ctx.shadowBlur = 0;
-      const rankText = `${p.badge || '⭐'} ${(p.rankName || 'Sem Ranque').toUpperCase()}`;
-      ctx.fillText(rankText, textX, cardY + 52);
+      ctx.fillText(rankClean, dX + dSize + 6, cardY + 55);
       ctx.restore();
 
       ctx.restore();
     }
   }
 
-  // 2. Coluna Esquerda: TIME B
-  await drawTeamColumn(team2, leftTeamX, teamColW, false);
+  // 2. Coluna Esquerda: TIME A (SEMPRE ATACANTE)
+  await drawTeamColumn(team1, leftTeamX, teamColW, true);
 
-  // 3. Coluna Direita: TIME A
-  await drawTeamColumn(team1, rightTeamX, teamColW, true);
+  // 3. Coluna Direita: TIME B (SEMPRE DEFESA)
+  await drawTeamColumn(team2, rightTeamX, teamColW, false);
 
-  // 4. Coluna Central: MAPA VENCEDOR EM DESTAQUE
-  const mapCardH = 500;
+  // 4. Coluna Central: MAPA VENCEDOR
+  const mapCardH = 499;
   ctx.save();
   ctx.beginPath();
-  ctx.roundRect(centerMapX, colY, mapColW, mapCardH, 10);
+  ctx.roundRect(centerMapX, colY, mapColW, mapCardH, 6);
   const mapCardGrad = ctx.createLinearGradient(centerMapX, colY, centerMapX, colY + mapCardH);
-  mapCardGrad.addColorStop(0, 'rgba(8, 14, 26, 0.88)');
-  mapCardGrad.addColorStop(0.5, 'rgba(6, 10, 20, 0.92)');
-  mapCardGrad.addColorStop(1, 'rgba(4, 7, 14, 0.96)');
+  mapCardGrad.addColorStop(0, '#090E1A');
+  mapCardGrad.addColorStop(0.5, '#060A14');
+  mapCardGrad.addColorStop(1, '#04070E');
   ctx.fillStyle = mapCardGrad;
   ctx.fill();
 
-  ctx.strokeStyle = '#00E5FF';
-  ctx.lineWidth = 1.5;
+  ctx.strokeStyle = 'rgba(0, 229, 255, 0.35)';
+  ctx.lineWidth = 1;
   ctx.stroke();
 
   // Tag Superior do Card do Mapa
   ctx.textAlign = 'center';
   ctx.textBaseline = 'middle';
-  ctx.font = 'bold 13px "SegoeUIBold", "Arial", sans-serif';
+  ctx.font = 'bold 12px "SegoeUIBold", "Arial", sans-serif';
   ctx.fillStyle = '#00E5FF';
-  ctx.shadowColor = 'rgba(0, 229, 255, 0.8)';
-  ctx.shadowBlur = 8;
-  ctx.fillText('📍 MAPA ESCOLHIDO', centerMapX + mapColW / 2, colY + 24);
-  ctx.shadowBlur = 0;
+  ctx.fillText('MAPA ESCOLHIDO', centerMapX + mapColW / 2, colY + 24);
 
   // Imagem do Mapa Vencedor
   const mapImgPad = 14;
   const mapImgX = centerMapX + mapImgPad;
   const mapImgY = colY + 44;
   const mapImgW = mapColW - mapImgPad * 2;
-  const mapImgH = 205;
+  const mapImgH = 195;
 
   ctx.save();
   ctx.beginPath();
-  ctx.roundRect(mapImgX, mapImgY, mapImgW, mapImgH, 8);
+  ctx.roundRect(mapImgX, mapImgY, mapImgW, mapImgH, 6);
   ctx.clip();
 
   if (mapImg) {
@@ -903,7 +925,7 @@ async function renderTeamsImage(team1, team2, winningMap) {
     ctx.fillRect(mapImgX, mapImgY, mapImgW, mapImgH);
   }
 
-  // Gradiente sutil sobre a foto do mapa
+  // Gradiente sobre a foto do mapa para leitura de texto
   const photoOverlay = ctx.createLinearGradient(mapImgX, mapImgY, mapImgX, mapImgY + mapImgH);
   photoOverlay.addColorStop(0, 'rgba(0, 0, 0, 0.10)');
   photoOverlay.addColorStop(0.7, 'rgba(0, 0, 0, 0.30)');
@@ -915,9 +937,9 @@ async function renderTeamsImage(team1, team2, winningMap) {
   // Borda da foto do mapa
   ctx.save();
   ctx.beginPath();
-  ctx.roundRect(mapImgX, mapImgY, mapImgW, mapImgH, 8);
-  ctx.strokeStyle = 'rgba(0, 229, 255, 0.6)';
-  ctx.lineWidth = 1.5;
+  ctx.roundRect(mapImgX, mapImgY, mapImgW, mapImgH, 6);
+  ctx.strokeStyle = 'rgba(0, 229, 255, 0.5)';
+  ctx.lineWidth = 1;
   ctx.stroke();
   ctx.restore();
 
@@ -925,36 +947,45 @@ async function renderTeamsImage(team1, team2, winningMap) {
   const mapNameText = (winningMap.name || 'VALORANT').toUpperCase();
   ctx.textAlign = 'center';
   ctx.textBaseline = 'middle';
-  ctx.font = 'bold 30px "SegoeUIBold", "Arial", sans-serif';
+  ctx.font = 'bold 26px "SegoeUIBold", "Arial", sans-serif';
   ctx.fillStyle = '#FFFFFF';
-  ctx.shadowColor = 'rgba(0, 229, 255, 0.9)';
-  ctx.shadowBlur = 14;
-  ctx.fillText(mapNameText, centerMapX + mapColW / 2, colY + 280);
+  ctx.shadowColor = 'rgba(0, 229, 255, 0.8)';
+  ctx.shadowBlur = 10;
+  ctx.fillText(mapNameText, centerMapX + mapColW / 2, colY + 272);
   ctx.shadowBlur = 0;
 
   // Linha separadora abaixo do nome
-  ctx.strokeStyle = 'rgba(0, 229, 255, 0.35)';
+  ctx.strokeStyle = 'rgba(0, 229, 255, 0.25)';
   ctx.lineWidth = 1;
   ctx.beginPath();
-  ctx.moveTo(centerMapX + 40, colY + 305);
-  ctx.lineTo(centerMapX + mapColW - 40, colY + 305);
+  ctx.moveTo(centerMapX + 40, colY + 296);
+  ctx.lineTo(centerMapX + mapColW - 40, colY + 296);
   ctx.stroke();
 
-  // Emblema "VS" Estilizado Neon
-  ctx.font = 'bold 50px "SegoeUIBold", "Arial", sans-serif';
-  const vsGrad = ctx.createLinearGradient(centerMapX + mapColW / 2 - 30, 0, centerMapX + mapColW / 2 + 30, 0);
-  vsGrad.addColorStop(0, '#FF7700');
-  vsGrad.addColorStop(0.5, '#FFFFFF');
-  vsGrad.addColorStop(1, '#00E5FF');
-  ctx.fillStyle = vsGrad;
-  ctx.shadowColor = 'rgba(255, 255, 255, 0.6)';
-  ctx.shadowBlur = 12;
-  ctx.fillText('VS', centerMapX + mapColW / 2, colY + 365);
-  ctx.shadowBlur = 0;
+  // Emblema VS Minimalista e Elegante
+  const vsW = 64;
+  const vsH = 32;
+  const vsX = centerMapX + (mapColW - vsW) / 2;
+  const vsY = colY + 325;
+  ctx.save();
+  ctx.beginPath();
+  ctx.roundRect(vsX, vsY, vsW, vsH, 16);
+  ctx.fillStyle = 'rgba(15, 23, 42, 0.85)';
+  ctx.fill();
+  ctx.strokeStyle = 'rgba(0, 229, 255, 0.45)';
+  ctx.lineWidth = 1;
+  ctx.stroke();
+
+  ctx.font = 'bold 15px "SegoeUIBold", "Arial", sans-serif';
+  ctx.fillStyle = '#FFFFFF';
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.fillText('VS', vsX + vsW / 2, vsY + vsH / 2);
+  ctx.restore();
 
   // Caixa de Informações da Partida
-  const infoY = colY + 418;
-  const infoH = 62;
+  const infoY = colY + 395;
+  const infoH = 80;
   const infoW = mapColW - 28;
   const infoX = centerMapX + 14;
 
@@ -962,17 +993,17 @@ async function renderTeamsImage(team1, team2, winningMap) {
   ctx.roundRect(infoX, infoY, infoW, infoH, 6);
   ctx.fillStyle = 'rgba(15, 23, 42, 0.65)';
   ctx.fill();
-  ctx.strokeStyle = 'rgba(255, 255, 255, 0.12)';
+  ctx.strokeStyle = 'rgba(255, 255, 255, 0.10)';
   ctx.lineWidth = 1;
   ctx.stroke();
 
   ctx.font = 'bold 12px "SegoeUIBold", "Arial", sans-serif';
-  ctx.fillStyle = '#38BDF8';
-  ctx.fillText('⚔️ 5v5 COMPETITIVO • MMR BALANCED', centerMapX + mapColW / 2, infoY + 20);
+  ctx.fillStyle = '#CBD5E1';
+  ctx.fillText('TIME A (ATACANTE)  vs  TIME B (DEFESA)', centerMapX + mapColW / 2, infoY + 26);
 
   ctx.font = '11px "SegoeUI", "Arial", sans-serif';
   ctx.fillStyle = '#94A3B8';
-  ctx.fillText('Partida oficial gravada no histórico do MIX', centerMapX + mapColW / 2, infoY + 42);
+  ctx.fillText('5v5 Competitivo • Equilibrado por MMR', centerMapX + mapColW / 2, infoY + 50);
 
   ctx.restore();
 
@@ -981,7 +1012,7 @@ async function renderTeamsImage(team1, team2, winningMap) {
   ctx.textBaseline = 'middle';
   ctx.font = 'bold 13px "SegoeUIBold", "Arial", sans-serif';
   ctx.fillStyle = '#00E5FF';
-  ctx.fillText('discord.gg/xd  •  Bom jogo a todos os competidores!', W / 2, H - 28);
+  ctx.fillText('discord.gg/xd  •  Partida Oficial do MIX', W / 2, H - 28);
 
   return canvas.toBuffer('image/png');
 }
@@ -1143,7 +1174,7 @@ async function renderMvpImage(data) {
   ctx.fillStyle = '#FFFFFF';
   ctx.shadowColor = 'rgba(255, 215, 0, 0.85)';
   ctx.shadowBlur = 14;
-  ctx.fillText('👑  MVP DA PARTIDA  —  VALORANT MIX', W / 2, 48);
+  ctx.fillText('MVP DA PARTIDA — VALORANT MIX', W / 2, 48);
   ctx.shadowBlur = 0;
 
   // Subtítulo
@@ -1236,12 +1267,12 @@ async function renderMvpImage(data) {
   ctx.font = 'bold 14px "SegoeUI", "Arial", sans-serif';
   ctx.fillStyle = '#00E5FF';
   const riotText = data.riotName ? `${data.riotName}#${data.riotTag || 'BR1'}` : 'Conta Riot Vinculada';
-  ctx.fillText(`🎮 ${riotText}`, avX + avSize / 2, avY + avSize + 56);
+  ctx.fillText(riotText, avX + avSize / 2, avY + avSize + 56);
 
   // Elo / Ranque
   ctx.font = 'bold 12px "SegoeUIBold", "Arial", sans-serif';
   ctx.fillStyle = '#FBBF24';
-  const rankText = `${data.badge || '⭐'} ${(data.rankName || 'Radiante').toUpperCase()}`;
+  const rankText = (data.rankName || 'Radiante').toUpperCase();
   ctx.fillText(rankText, avX + avSize / 2, avY + avSize + 80);
   ctx.restore();
 
@@ -1267,7 +1298,7 @@ async function renderMvpImage(data) {
   ctx.textBaseline = 'middle';
   ctx.font = 'bold 13px "SegoeUIBold", "Arial", sans-serif';
   ctx.fillStyle = '#FFD700';
-  ctx.fillText('⚡ ESTATÍSTICAS DA PARTIDA PERSONALIZADA', statsX, cardY + 45);
+  ctx.fillText('ESTATÍSTICAS DA PARTIDA PERSONALIZADA', statsX, cardY + 45);
 
   // Box 1: KILLS EM DESTAQUE (Grande e Impactante)
   const killBoxY = cardY + 70;
@@ -1329,29 +1360,29 @@ async function renderMvpImage(data) {
   ctx.textAlign = 'left';
   ctx.font = 'bold 15px "SegoeUIBold", "Arial", sans-serif';
   ctx.fillStyle = '#FFFFFF';
-  ctx.fillText(`🎯 Pontuação de Combate (Score):`, statsX, detailsY);
+  ctx.fillText(`Pontuação de Combate (Score):`, statsX, detailsY);
   ctx.fillStyle = '#FFD700';
   ctx.fillText(`${data.score || 0} pts`, statsX + 270, detailsY);
 
   // K/D Ratio
   const kd = ((data.kills || 0) / Math.max(1, data.deaths || 1)).toFixed(2);
   ctx.fillStyle = '#FFFFFF';
-  ctx.fillText(`📈 K/D Ratio:`, statsX, detailsY + 32);
+  ctx.fillText(`K/D Ratio:`, statsX, detailsY + 32);
   ctx.fillStyle = '#00FFA3';
   ctx.fillText(`${kd}`, statsX + 270, detailsY + 32);
 
   // Resultado do time
-  const outcomeText = data.won ? '🏆 VITÓRIA DO TIME' : '⚔️ DISPUTA ACIRRADA';
+  const outcomeText = data.won ? 'VITÓRIA DO TIME' : 'DISPUTA ACIRRADA';
   const outcomeColor = data.won ? '#00FFA3' : '#FF9900';
   ctx.fillStyle = '#FFFFFF';
-  ctx.fillText(`🚩 Resultado:`, statsX, detailsY + 64);
+  ctx.fillText(`Resultado:`, statsX, detailsY + 64);
   ctx.fillStyle = outcomeColor;
   ctx.fillText(outcomeText, statsX + 270, detailsY + 64);
 
   // Agente
   if (data.character) {
     ctx.fillStyle = '#FFFFFF';
-    ctx.fillText(`👤 Agente:`, statsX, detailsY + 96);
+    ctx.fillText(`Agente:`, statsX, detailsY + 96);
     ctx.fillStyle = '#00E5FF';
     ctx.fillText(`${data.character.toUpperCase()}`, statsX + 270, detailsY + 96);
   }

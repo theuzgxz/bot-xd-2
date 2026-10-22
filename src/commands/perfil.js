@@ -19,24 +19,24 @@ module.exports = {
 
     const embed = new EmbedBuilder()
       .setColor(COLORS.PRIMARY)
-      .setTitle(`👤 PERFIL DE VALORANT - ${target.username}`)
+      .setTitle(`PERFIL DE VALORANT - ${target.username}`)
       .setThumbnail(target.displayAvatarURL({ dynamic: true }))
       .setTimestamp();
 
     if (userData) {
       embed.addFields(
         {
-          name: '🎮 Conta Riot',
+          name: 'Conta Riot',
           value: userData.riotName ? `${userData.riotName}#${userData.riotTag}` : '*Não vinculada*',
           inline: true
         },
         {
-          name: '🏅 Elo Registrado',
-          value: `${userData.badge || '⭐'} **${userData.rank || DEFAULT_RANK}**`,
+          name: 'Elo Registrado',
+          value: `**${userData.rank || DEFAULT_RANK}**`,
           inline: true
         },
         {
-          name: '📊 MMR Base',
+          name: 'MMR Base',
           value: `\`${userData.mmr || DEFAULT_MMR} pts\``,
           inline: true
         }
@@ -44,7 +44,7 @@ module.exports = {
     } else {
       embed.setDescription(
         `<@${target.id}> ainda não tem elo registrado no sistema.\n\n` +
-        `💡 Use \`/vincular nick#tag\` (ex: \`/vincular Aspas#LOUD\`) para puxar seu elo oficial da Riot Games!`
+        `Use \`/vincular nick#tag\` (ex: \`/vincular Aspas#BR1\`) para puxar seu elo oficial da Riot Games!`
       );
     }
 

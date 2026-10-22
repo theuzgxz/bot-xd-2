@@ -18,7 +18,7 @@ function createInstructionEmbed(hasBannerAttachment = false) {
       `Para abrir uma nova sala personalizada, envie o comando abaixo neste canal:\n\n` +
       `\`/mix\`\n\n` +
       `O bot abrirá a fila e atualizará a imagem dos jogadores em tempo real.\n\n` +
-      `✨ **Novo por aqui?**\n` +
+      `**Novo por aqui?**\n` +
       `Antes de entrar na sua primeira mix, cadastre seu Riot ID no bot:\n\n` +
       `\`/vincular nome#tag\`\n\n` +
       `**Exemplo:** \`/vincular Aspas#BR1\`\n` +
@@ -39,17 +39,6 @@ function createInstructionButtons() {
       .setCustomId('btn_start_mix_from_instructions')
       .setLabel('Iniciar MIX Agora')
       .setStyle(ButtonStyle.Success)
-      .setEmoji('🎮'),
-    new ButtonBuilder()
-      .setCustomId('btn_top_melhores')
-      .setLabel('Top 5 Melhores Da xd')
-      .setStyle(ButtonStyle.Primary)
-      .setEmoji('🏆'),
-    new ButtonBuilder()
-      .setCustomId('btn_info_help')
-      .setLabel('Como Funciona?')
-      .setStyle(ButtonStyle.Secondary)
-      .setEmoji('❓')
   );
 
   return [row];

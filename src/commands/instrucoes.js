@@ -10,7 +10,7 @@ module.exports = {
   async execute(interaction) {
     if (!hasMixPermission(interaction.member)) {
       return interaction.reply({
-        content: '❌ Apenas quem possui o cargo **mix** (ou Administrador) pode enviar as instruções oficiais!',
+        content: 'Apenas quem possui o cargo **mix** (ou Administrador) pode enviar as instruções oficiais!',
         ephemeral: true
       });
     }
@@ -20,12 +20,12 @@ module.exports = {
     try {
       await sendInstructionMessage(interaction.channel);
       await interaction.editReply({
-        content: '✅ O guia de instruções compacto do MIX foi enviado com sucesso no canal!'
+        content: 'O guia de instruções do MIX foi enviado com sucesso no canal!'
       });
     } catch (err) {
       console.error('Erro ao enviar instruções:', err);
       await interaction.editReply({
-        content: `❌ Ocorreu um erro ao enviar as instruções: ${err.message}`
+        content: `Ocorreu um erro ao enviar as instruções: ${err.message}`
       });
     }
   }

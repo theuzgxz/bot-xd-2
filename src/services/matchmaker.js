@@ -61,12 +61,11 @@ function balanceTeams(players) {
   }
 
   const selected = candidatePairs[Math.floor(Math.random() * candidatePairs.length)];
-  const isTeamAAttack = Math.random() < 0.5;
 
   const team1 = {
     name: 'Time A',
-    side: isTeamAAttack ? 'Ataque ⚔️' : 'Defesa 🛡️',
-    sideRaw: isTeamAAttack ? 'attack' : 'defense',
+    side: 'Ataque',
+    sideRaw: 'attack',
     players: selected.teamA.sort((a, b) => (b.mmr || 0) - (a.mmr || 0)),
     totalMmr: selected.sumA,
     avgMmr: Math.round(selected.sumA / 5)
@@ -74,8 +73,8 @@ function balanceTeams(players) {
 
   const team2 = {
     name: 'Time B',
-    side: isTeamAAttack ? 'Defesa 🛡️' : 'Ataque ⚔️',
-    sideRaw: isTeamAAttack ? 'defense' : 'attack',
+    side: 'Defesa',
+    sideRaw: 'defense',
     players: selected.teamB.sort((a, b) => (b.mmr || 0) - (a.mmr || 0)),
     totalMmr: selected.sumB,
     avgMmr: Math.round(selected.sumB / 5)
@@ -83,7 +82,7 @@ function balanceTeams(players) {
 
   return {
     mode: 'balanced',
-    modeLabel: '⚖️ Sorteio Balanceado (por MMR)',
+    modeLabel: 'Sorteio Balanceado (por MMR)',
     team1,
     team2,
     mmrDifference: selected.diff,
@@ -105,12 +104,10 @@ function randomTeams(players) {
   const sumB = teamBPlayers.reduce((sum, p) => sum + (p.mmr || 1000), 0);
   const diff = Math.abs(sumA - sumB);
 
-  const isTeamAAttack = Math.random() < 0.5;
-
   const team1 = {
     name: 'Time A',
-    side: isTeamAAttack ? 'Ataque ⚔️' : 'Defesa 🛡️',
-    sideRaw: isTeamAAttack ? 'attack' : 'defense',
+    side: 'Ataque',
+    sideRaw: 'attack',
     players: teamAPlayers.sort((a, b) => (b.mmr || 0) - (a.mmr || 0)),
     totalMmr: sumA,
     avgMmr: Math.round(sumA / 5)
@@ -118,8 +115,8 @@ function randomTeams(players) {
 
   const team2 = {
     name: 'Time B',
-    side: isTeamAAttack ? 'Defesa 🛡️' : 'Ataque ⚔️',
-    sideRaw: isTeamAAttack ? 'defense' : 'attack',
+    side: 'Defesa',
+    sideRaw: 'defense',
     players: teamBPlayers.sort((a, b) => (b.mmr || 0) - (a.mmr || 0)),
     totalMmr: sumB,
     avgMmr: Math.round(sumB / 5)
@@ -127,7 +124,7 @@ function randomTeams(players) {
 
   return {
     mode: 'random',
-    modeLabel: '🎲 Sorteio Aleatório (Sem Balancear)',
+    modeLabel: 'Sorteio Aleatório (Sem Balancear)',
     team1,
     team2,
     mmrDifference: diff,

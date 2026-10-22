@@ -21,7 +21,7 @@ module.exports = {
 async function finalizeMixSession(interaction) {
   if (!hasMixPermission(interaction.member)) {
     return interaction.reply({
-      content: '❌ Apenas quem possui o cargo **mix** (ou Administrador) pode finalizar a partida!',
+      content: 'Apenas quem possui o cargo **mix** (ou Administrador) pode finalizar a partida!',
       ephemeral: true
     });
   }
@@ -32,7 +32,7 @@ async function finalizeMixSession(interaction) {
 
   if (!session) {
     return interaction.reply({
-      content: '❌ Não há nenhuma partida de MIX ativa no momento para finalizar.',
+      content: 'Não há nenhuma partida de MIX ativa no momento para finalizar.',
       ephemeral: true
     });
   }
@@ -60,12 +60,12 @@ async function finalizeMixSession(interaction) {
   let pullInfo = '';
   if (guildConfig.voiceWaitingId && playerIds.length > 0) {
     const pullResult = await pullAllToWaitingChannel(interaction.guild, playerIds, guildConfig.voiceWaitingId);
-    pullInfo = `\n🔄 **${pullResult.moved.length}** jogadores foram movidos de volta para <#${guildConfig.voiceWaitingId}>.`;
+    pullInfo = `\n**${pullResult.moved.length}** jogadores foram movidos de volta para <#${guildConfig.voiceWaitingId}>.`;
   }
 
   const embed = new EmbedBuilder()
     .setColor(COLORS.SUCCESS)
-    .setTitle('🏁 PARTIDA DE MIX FINALIZADA!')
+    .setTitle('PARTIDA DE MIX FINALIZADA')
     .setDescription(`A partida foi encerrada com sucesso!${pullInfo}\n\nObrigado a todos que participaram! O bot está processando as estatísticas da partida e a revelação do **MVP**...`)
     .setTimestamp();
 
@@ -110,7 +110,7 @@ async function processMatchStats(allPlayers, matchStartedAt, channel, guild) {
     console.log('[finalizarmix] Nenhum jogador com conta Riot vinculada para consultar a API.');
     try {
       await channel.send({
-        content: `⚠️ **Participação registrada, mas sem MVP e kills automáticos.** Nenhum jogador tem conta Riot vinculada. Usem \`/vincular nick#tag\` para que o MVP da partida seja eleito automaticamente!`
+        content: `**Participação registrada, mas sem MVP e kills automáticos.** Nenhum jogador tem conta Riot vinculada. Usem \`/vincular nick#tag\` para que o MVP da partida seja eleito automaticamente!`
       });
     } catch (_) {}
     return;
@@ -144,7 +144,7 @@ async function processMatchStats(allPlayers, matchStartedAt, channel, guild) {
     try {
       await channel.send({
         content:
-          `⚠️ **Partida de MIX registrada!** Os stats detalhados da Riot ainda não foram indexados pela API ou a partida não foi configurada no modo Personalizado.\n` +
+          `**Partida de MIX registrada!** Os stats detalhados da Riot ainda não foram indexados pela API ou a partida não foi configurada no modo Personalizado.\n` +
           `O ranking do \`/melhores\` já computou a presença de todos os jogadores!`
       });
     } catch (_) {}
@@ -239,7 +239,7 @@ async function processMatchStats(allPlayers, matchStartedAt, channel, guild) {
         riotName: mvpApi.name,
         riotTag: mvpApi.tag,
         rankName: mvpDiscord?.rankName || 'Radiante',
-        badge: mvpDiscord?.badge || '🔥',
+        badge: '',
         avatarBuffer: avatarBuffer,
         mapName: matchData.map || 'Valorant',
         kills: mvpApi.kills || 0,
@@ -253,20 +253,20 @@ async function processMatchStats(allPlayers, matchStartedAt, channel, guild) {
       const attachment = new AttachmentBuilder(mvpImageBuf, { name: `mvp-${Date.now()}.png` });
 
       const mentionText = discordMention
-        ? `👑 **PARABÉNS ${discordMention}! VOCÊ FOI O MVP DA PARTIDA PERSONALIZADA!** 👑\n`
-        : `👑 **PARABÉNS \`${mvpApi.name}#${mvpApi.tag}\`! VOCÊ FOI O MVP DA PARTIDA PERSONALIZADA!** 👑\n`;
+        ? `**PARABÉNS ${discordMention}! VOCÊ FOI O MVP DA PARTIDA PERSONALIZADA!**\n`
+        : `**PARABÉNS \`${mvpApi.name}#${mvpApi.tag}\`! VOCÊ FOI O MVP DA PARTIDA PERSONALIZADA!**\n`;
 
       await channel.send({
         content:
           `${mentionText}` +
-          `🔥 Abates: **${mvpApi.kills} Kills**  •  📊 KDA: **${mvpApi.kills}/${mvpApi.deaths}/${mvpApi.assists}**  •  🎯 Score: **${mvpApi.score || 0} pts**\n` +
+          `Abates: **${mvpApi.kills} Kills**  •  KDA: **${mvpApi.kills}/${mvpApi.deaths}/${mvpApi.assists}**  •  Score: **${mvpApi.score || 0} pts**\n` +
           `*Estatísticas sincronizadas oficialmente da Riot Games da partida recém-finalizada.*`,
         files: [attachment]
       });
     } catch (mvpErr) {
       console.error('[finalizarmix] Erro ao renderizar ou enviar imagem do MVP:', mvpErr);
       await channel.send({
-        content: `👑 **MVP DA PARTIDA:** ${discordMention || mvpApi.name} com **${mvpApi.kills} kills** e KDA **${mvpApi.kills}/${mvpApi.deaths}/${mvpApi.assists}**!`
+        content: `**MVP DA PARTIDA:** ${discordMention || mvpApi.name} com **${mvpApi.kills} kills** e KDA **${mvpApi.kills}/${mvpApi.deaths}/${mvpApi.assists}**!`
       }).catch(() => {});
     }
   }

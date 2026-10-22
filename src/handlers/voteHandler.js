@@ -34,13 +34,12 @@ async function startMapVote(interactionOrChannel, guild, team1, team2, guildConf
   const mapOptions = MAPS.map(m => ({
     label: m.name,
     value: m.id,
-    description: `Votar no mapa ${m.name}`,
-    emoji: '🗺️'
+    description: `Votar no mapa ${m.name}`
   }));
 
   const selectMenu = new StringSelectMenuBuilder()
     .setCustomId('map_vote_select')
-    .setPlaceholder('🗳️ Selecione o mapa em que deseja votar...')
+    .setPlaceholder('Selecione o mapa em que deseja votar...')
     .addOptions(mapOptions);
 
   const row = new ActionRowBuilder().addComponents(selectMenu);
@@ -89,7 +88,7 @@ async function startMapVote(interactionOrChannel, guild, team1, team2, guildConf
   collector.on('collect', async i => {
     if (!playerIds.has(i.user.id)) {
       return i.reply({
-        content: '❌ Apenas os jogadores confirmados neste MIX podem votar no mapa!',
+        content: 'Apenas os jogadores confirmados neste MIX podem votar no mapa!',
         ephemeral: true
       });
     }
@@ -99,7 +98,7 @@ async function startMapVote(interactionOrChannel, guild, team1, team2, guildConf
     const selectedMap = MAPS.find(m => m.id === selectedMapId);
 
     await i.reply({
-      content: `✅ Você votou no mapa **${selectedMap ? selectedMap.name : selectedMapId}**!`,
+      content: `Você votou no mapa **${selectedMap ? selectedMap.name : selectedMapId}**!`,
       ephemeral: true
     });
 
@@ -167,27 +166,26 @@ async function startMapVote(interactionOrChannel, guild, team1, team2, guildConf
     // Texto sobre movimentação de voz
     let moveContent = '';
     if (moveResult.success) {
-      moveContent = `🔊 **Time A** → <#${guildConfig.voiceTeamAId}>  •  🔊 **Time B** → <#${guildConfig.voiceTeamBId}>`;
+      moveContent = `**Time A** → <#${guildConfig.voiceTeamAId}>  •  **Time B** → <#${guildConfig.voiceTeamBId}>`;
       if (moveResult.results) {
         const notInVoice = [
           ...moveResult.results.teamA.notInVoice.map(n => `• **${n}** (Time A)`),
           ...moveResult.results.teamB.notInVoice.map(n => `• **${n}** (Time B)`)
         ];
         if (notInVoice.length > 0) {
-          moveContent += `\n\n⚠️ **Jogadores fora de chamada:**\n${notInVoice.join('\n')}\n*Por favor, conectem-se na chamada do seu time!*`;
+          moveContent += `\n\n**Jogadores fora de chamada:**\n${notInVoice.join('\n')}\n*Por favor, conectem-se na chamada do seu time!*`;
         }
       }
     } else {
-      moveContent = `⚠️ *${moveResult.error || 'Canais de voz não configurados.'}*`;
+      moveContent = `*${moveResult.error || 'Canais de voz não configurados.'}*`;
     }
 
     // Botão para finalizar o MIX e puxar todos de volta
     const endRow = new ActionRowBuilder().addComponents(
       new ButtonBuilder()
         .setCustomId('btn_end_mix')
-        .setLabel('Finalizar Partida & Puxar Todos')
+        .setLabel('Finalizar Partida e Puxar Todos')
         .setStyle(ButtonStyle.Secondary)
-        .setEmoji('🔄')
     );
 
     await channel.send({
